@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, Bot, Calendar, Users } from 'lucide-react';
 import { Employee, Shift, Assignment, Duty, DayOfWeek } from '../../types';
 import { formatDateToId, getDayName, dayOfWeekToDate } from '../../utils/date';
 
-export interface ScheduleGridProps {
+interface ScheduleGridProps {
   shifts: Shift[];
   assignments: Assignment[];
   employees: Employee[];
@@ -41,6 +41,29 @@ export function ScheduleGrid({
 
   const getDutyById = (id: string) => {
     return duties.find(d => d.id === id);
+  };
+
+  // Get count of assignments per employee for this shift
+  const getAssignedEmployeesForShift = (shiftId: string): string[] => {
+    return assignments
+      .filter(a => a.shiftId === shiftId)
+      .map(a => a.employeeId);
+  };
+
+  const handleAddEmployee = (shiftId: string, day: DayOfWeek) => {
+    if (employees.length === 0) return;
+    
+    const assignedEmployeeIds = getAssignedEmployeesForShift(shiftId);
+    
+    // Find next unassigned employee
+    const nextEmployee = employees.find(emp => !assignedEmployeeIds.includes(emp.id));
+    
+    if (nextEmployee) {
+      onManualAssign(shiftId, nextEmployee.id);
+    } else if (employees.length > assignedEmployeeIds.length) {
+      // All current employees assigned, cycle back to first
+      onManualAssign(shiftId, employees[0].id);
+    }
   };
 
   return (
@@ -153,13 +176,7 @@ export function ScheduleGrid({
                       </div>
                     ) : (
                       <button
-                        onClick={() => {
-                          if (employees.length === 1) {
-                            onManualAssign(shift.id, employees[0].id);
-                          } else if (employees.length > 1) {
-                            onManualAssign(shift.id, employees[0].id);
-                          }
-                        }}
+                        onClick={() => handleAddEmployee(shift.id, day)}
                         className="w-full h-full flex items-center justify-center text-slate-300 hover:text-slate-400 hover:bg-slate-50 transition-colors"
                       >
                         <Users size={16} />
