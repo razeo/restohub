@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Send, X, Check, Trash2, Bot, User, Loader2 } from 'lucide-react';
 import { ChatMessage } from '../../types';
 
-interface ChatInterfaceProps {
+export interface ChatInterfaceProps {
   messages: ChatMessage[];
   onSendMessage: (text: string) => void;
   onCancelAi: () => void;

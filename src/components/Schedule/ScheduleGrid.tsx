@@ -1,9 +1,9 @@
 import React from 'react';
-import { ChevronLeft, ChevronRight, Bot, Calendar } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Bot, Calendar, Users } from 'lucide-react';
 import { Employee, Shift, Assignment, Duty, DayOfWeek } from '../../types';
 import { formatDateToId, getDayName, dayOfWeekToDate } from '../../utils/date';
 
-interface ScheduleGridProps {
+export interface ScheduleGridProps {
   shifts: Shift[];
   assignments: Assignment[];
   employees: Employee[];
@@ -12,9 +12,7 @@ interface ScheduleGridProps {
   onRemoveAssignment: (id: string) => void;
   onManualAssign: (shiftId: string, employeeId: string) => void;
   onNavigateWeek: (direction: number) => void;
-  isSidebarOpen: boolean;
   onToggleSidebar: () => void;
-  isChatOpen: boolean;
   onToggleChat: () => void;
 }
 
@@ -27,9 +25,7 @@ export function ScheduleGrid({
   onRemoveAssignment,
   onManualAssign,
   onNavigateWeek,
-  isSidebarOpen,
   onToggleSidebar,
-  isChatOpen,
   onToggleChat,
 }: ScheduleGridProps) {
   const weekDays = Object.values(DayOfWeek);
@@ -86,8 +82,8 @@ export function ScheduleGrid({
           <div className="flex items-center gap-2">
             <button
               onClick={onToggleChat}
-              className={`p-2 hover:bg-slate-100 rounded-lg transition-colors ${!isChatOpen ? 'bg-primary-100 text-primary-600' : 'text-slate-600'}`}
-              title={isChatOpen ? "Zatvori chat" : "Otvori chat"}
+              className={`p-2 hover:bg-slate-100 rounded-lg transition-colors ${true ? 'bg-primary-100 text-primary-600' : 'text-slate-600'}`}
+              title="Otvori chat"
             >
               <Bot size={20} />
             </button>
@@ -122,7 +118,6 @@ export function ScheduleGrid({
 
               {/* Days */}
               {weekDays.map((day) => {
-                const dayShifts = shifts.filter(s => s.day === day);
                 const shiftAssignments = getAssignmentsForShift(shift.id);
                 
                 return (
@@ -162,7 +157,6 @@ export function ScheduleGrid({
                           if (employees.length === 1) {
                             onManualAssign(shift.id, employees[0].id);
                           } else if (employees.length > 1) {
-                            // For now, assign to first employee
                             onManualAssign(shift.id, employees[0].id);
                           }
                         }}
@@ -227,5 +221,3 @@ function X({ size }: { size: number }) {
     </svg>
   );
 }
-
-export default ScheduleGrid;

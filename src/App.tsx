@@ -3,9 +3,9 @@
 // Shift Scheduler - Restaurant Shift Management
 // ===========================================
 
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
-import { Menu, Bot } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { useLocalStorage, clearAllData } from './hooks/useLocalStorage';
 import { generateEmployeeId, generateDutyId, generateShiftId, generateAssignmentId } from './utils/id';
 import { getMonday, formatDateToId, addWeeks } from './utils/date';
@@ -82,67 +82,55 @@ function App() {
   // Computed values
   const currentWeekId = useMemo(() => formatDateToId(currentWeekStart), [currentWeekStart]);
   const weekAssignments = useMemo(() => 
-    assignments.filter(a => a.weekId === currentWeekId), 
+    assignments.filter((a: Assignment) => a.weekId === currentWeekId), 
     [assignments, currentWeekId]
   );
 
   // CRUD Operations - Employees
   const addEmployee = (newEmp: Omit<Employee, 'id'>) => {
-    setEmployees(prev => [...prev, { ...newEmp, id: generateEmployeeId() }]);
+    setEmployees((prev: Employee[]) => [...prev, { ...newEmp, id: generateEmployeeId() }]);
     toast.success(`Dodat radnik: ${newEmp.name}`);
   };
   
   const removeEmployee = (id: string) => {
-    const employee = employees.find(e => e.id === id);
-    setEmployees(prev => prev.filter(e => e.id !== id));
-    setAssignments(prev => prev.filter(a => a.employeeId !== id));
+    const employee = employees.find((e: Employee) => e.id === id);
+    setEmployees((prev: Employee[]) => prev.filter((e: Employee) => e.id !== id));
+    setAssignments((prev: Assignment[]) => prev.filter((a: Assignment) => a.employeeId !== id));
     if (employee) toast.success(`Uklonjen radnik: ${employee.name}`);
-  };
-
-  const updateEmployee = (updated: Employee) => {
-    setEmployees(prev => prev.map(e => e.id === updated.id ? updated : e));
   };
 
   // CRUD Operations - Duties
   const addDuty = (newDuty: Omit<Duty, 'id'>) => {
-    setDuties(prev => [...prev, { ...newDuty, id: generateDutyId() }]);
+    setDuties((prev: Duty[]) => [...prev, { ...newDuty, id: generateDutyId() }]);
     toast.success(`Dodata dužnost: ${newDuty.label}`);
   };
   
   const removeDuty = (id: string) => {
-    const duty = duties.find(d => d.id === id);
-    setDuties(prev => prev.filter(d => d.id !== id));
+    const duty = duties.find((d: Duty) => d.id === id);
+    setDuties((prev: Duty[]) => prev.filter((d: Duty) => d.id !== id));
     if (duty) toast.success(`Uklonjena dužnost: ${duty.label}`);
-  };
-
-  const updateDuty = (updated: Duty) => {
-    setDuties(prev => prev.map(d => d.id === updated.id ? updated : d));
   };
 
   // CRUD Operations - Shifts
   const addShift = (newShift: Omit<Shift, 'id'>) => {
-    setShifts(prev => [...prev, { ...newShift, id: generateShiftId() }]);
+    setShifts((prev: Shift[]) => [...prev, { ...newShift, id: generateShiftId() }]);
     toast.success(`Dodata smjena: ${newShift.label}`);
   };
   
   const removeShift = (id: string) => {
-    const shift = shifts.find(s => s.id === id);
-    setShifts(prev => prev.filter(s => s.id !== id));
-    setAssignments(prev => prev.filter(a => a.shiftId !== id));
+    const shift = shifts.find((s: Shift) => s.id === id);
+    setShifts((prev: Shift[]) => prev.filter((s: Shift) => s.id !== id));
+    setAssignments((prev: Assignment[]) => prev.filter((a: Assignment) => a.shiftId !== id));
     if (shift) toast.success(`Uklonjena smjena: ${shift.label}`);
-  };
-
-  const updateShift = (updated: Shift) => {
-    setShifts(prev => prev.map(s => s.id === updated.id ? updated : s));
   };
 
   // Assignment Operations
   const removeAssignment = (id: string) => {
-    setAssignments(prev => prev.filter(a => a.id !== id));
+    setAssignments((prev: Assignment[]) => prev.filter((a: Assignment) => a.id !== id));
   };
 
   const manualAssign = (shiftId: string, employeeId: string) => {
-    if (assignments.some(a => 
+    if (assignments.some((a: Assignment) => 
       a.shiftId === shiftId && 
       a.employeeId === employeeId && 
       a.weekId === currentWeekId
@@ -151,14 +139,14 @@ function App() {
       return;
     }
     
-    setAssignments(prev => [...prev, { 
+    setAssignments((prev: Assignment[]) => [...prev, { 
       id: generateAssignmentId(), 
       shiftId, 
       employeeId, 
       weekId: currentWeekId 
     }]);
     
-    const employee = employees.find(e => e.id === employeeId);
+    const employee = employees.find((e: Employee) => e.id === employeeId);
     toast.success(`Dodijeljen: ${employee?.name || '?'}`);
   };
 
@@ -253,17 +241,13 @@ function App() {
           employees={employees} 
           duties={duties} 
           shifts={shifts}
-          assignments={assignments}
           aiRules={aiRules} 
           onAddEmployee={addEmployee} 
           onRemoveEmployee={removeEmployee} 
-          onUpdateEmployee={updateEmployee} 
           onAddDuty={addDuty} 
           onRemoveDuty={removeDuty} 
-          onUpdateDuty={updateDuty} 
           onAddShift={addShift}
           onRemoveShift={removeShift}
-          onUpdateShift={updateShift}
           onUpdateAiRules={setAiRules} 
           onResetAll={handleResetAll}
           onImportData={handleImportData}
@@ -282,9 +266,7 @@ function App() {
           onRemoveAssignment={removeAssignment} 
           onManualAssign={manualAssign} 
           onNavigateWeek={navigateWeek} 
-          isSidebarOpen={isSidebarOpen}
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-          isChatOpen={isChatOpen}
           onToggleChat={() => setIsChatOpen(!isChatOpen)}
         />
         

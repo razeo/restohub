@@ -1,13 +1,10 @@
+import { useState } from 'react';
+
 // ===========================================
 // Safe localStorage hook with error handling
 // Handles corrupted data and provides type safety
 // ===========================================
 
-import { useState, useEffect } from 'react';
-
-/**
- * Custom hook for safe localStorage access
- */
 export function useLocalStorage<T>(key: string, defaultValue: T) {
   const [storedValue, setStoredValue] = useState<T>(() => {
     try {
@@ -46,7 +43,6 @@ export function useLocalStorage<T>(key: string, defaultValue: T) {
 
 /**
  * Helper function to safely parse JSON from localStorage
- * Returns default value on error
  */
 export function safeParse<T>(key: string, defaultValue: T): T {
   try {
@@ -56,19 +52,6 @@ export function safeParse<T>(key: string, defaultValue: T): T {
   } catch (error) {
     console.warn(`Error parsing localStorage key "${key}":`, error);
     return defaultValue;
-  }
-}
-
-/**
- * Helper function to safely set localStorage with validation
- */
-export function safeSet<T>(key: string, value: T): boolean {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-    return true;
-  } catch (error) {
-    console.warn(`Error setting localStorage key "${key}":`, error);
-    return false;
   }
 }
 

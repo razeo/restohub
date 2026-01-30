@@ -1,22 +1,18 @@
-import React from 'react';
-import { Users, Calendar, Tag, Settings, Download, Upload, RotateCcw, Plus, Trash2, Edit2, X } from 'lucide-react';
+import React, { useState } from 'react';
+import { Users, Calendar, Tag, Settings, Download, Upload, RotateCcw, Plus, Trash2, X } from 'lucide-react';
 import { Employee, Shift, Duty, Role, DayOfWeek } from '../../types';
-import { generateEmployeeId, generateDutyId, generateShiftId } from '../../utils/id';
 
-interface SidebarProps {
+export interface SidebarProps {
   employees: Employee[];
   duties: Duty[];
   shifts: Shift[];
   aiRules: string;
   onAddEmployee: (employee: Omit<Employee, 'id'>) => void;
   onRemoveEmployee: (id: string) => void;
-  onUpdateEmployee: (employee: Employee) => void;
   onAddDuty: (duty: Omit<Duty, 'id'>) => void;
   onRemoveDuty: (id: string) => void;
-  onUpdateDuty: (duty: Duty) => void;
   onAddShift: (shift: Omit<Shift, 'id'>) => void;
   onRemoveShift: (id: string) => void;
-  onUpdateShift: (shift: Shift) => void;
   onUpdateAiRules: (rules: string) => void;
   onResetAll: () => void;
   onImportData: (data: any) => void;
@@ -32,26 +28,22 @@ export function Sidebar({
   aiRules,
   onAddEmployee,
   onRemoveEmployee,
-  onUpdateEmployee,
   onAddDuty,
   onRemoveDuty,
-  onUpdateDuty,
   onAddShift,
   onRemoveShift,
-  onUpdateShift,
   onUpdateAiRules,
   onResetAll,
   onImportData,
   onClose,
 }: SidebarProps) {
-  const [activeTab, setActiveTab] = React.useState<TabType>('employees');
-  const [isAdding, setIsAdding] = React.useState(false);
-  const [editingId, setEditingId] = React.useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<TabType>('employees');
+  const [isAdding, setIsAdding] = useState(false);
 
   // Form states
-  const [newEmployee, setNewEmployee] = React.useState({ name: '', role: Role.SERVER });
-  const [newDuty, setNewDuty] = React.useState({ label: '' });
-  const [newShift, setNewShift] = React.useState({ 
+  const [newEmployee, setNewEmployee] = useState({ name: '', role: Role.SERVER });
+  const [newDuty, setNewDuty] = useState({ label: '' });
+  const [newShift, setNewShift] = useState({ 
     day: DayOfWeek.MONDAY, 
     startTime: '08:00', 
     endTime: '16:00', 
@@ -356,5 +348,3 @@ export function Sidebar({
     </div>
   );
 }
-
-export default Sidebar;

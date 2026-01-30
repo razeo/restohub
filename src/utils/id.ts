@@ -38,7 +38,7 @@ export function generateShortId(prefix: string): string {
  * Format: prefix-ai-timestamp-random
  * Example: emp-ai-1738252800-abc12
  */
-export function generateAiId(prefix: string): string {
+export function generateAiId(_prefix: string): string {
   const timestamp = Date.now();
   const random = Math.random().toString(36).substring(2, 5);
   return `asg-ai-${timestamp}-${random}`;

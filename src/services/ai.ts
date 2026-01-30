@@ -3,7 +3,7 @@
 // Handles communication with MiniMax API
 // ===========================================
 
-import { ScheduleState, AIResponse, Assignment, Employee, Shift, Duty } from '../types';
+import { ScheduleState, AIResponse } from '../types';
 
 const API_BASE = "https://api.minimax.io/anthropic/v1/messages";
 
@@ -147,10 +147,10 @@ ZAHTJEV: "${prompt}"`;
 
 // Helper function to convert AI response to Assignments
 export function aiResponseToAssignments(
-  response: AIResponse,
-  currentWeekId: string,
-  existingAssignments: Assignment[]
-): Assignment[] {
-  // For now, just return empty - actual implementation would merge AI suggestions
+  _response: AIResponse,
+  _currentWeekId: string,
+  existingAssignments: any[]
+): any[] {
+  // For now, just return existing - actual implementation would merge AI suggestions
   return existingAssignments;
 }
