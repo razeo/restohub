@@ -24,9 +24,10 @@ import { ScheduleGrid } from './components/Schedule';
 import { ChatInterface } from './components/Chat';
 import { DailyReport } from './components/DailyReport';
 import { ShiftHandover } from './components/ShiftHandover';
+import { OutOfStock } from './components/OutOfStock';
 import { processScheduleRequest, isAiConfigured } from './services/ai';
 
-type PageType = 'schedule' | 'handover' | 'report' | 'settings';
+type PageType = 'schedule' | 'handover' | 'report' | 'outofstock' | 'settings';
 
 const INITIAL_EMPLOYEES: Employee[] = [
   { id: 'emp-1', name: 'Marko Marković', role: Role.SERVER },
@@ -366,6 +367,10 @@ function App() {
 
         {currentPage === 'report' && (
           <DailyReport />
+        )}
+
+        {currentPage === 'outofstock' && (
+          <OutOfStock />
         )}
 
         {currentPage === 'settings' && (
