@@ -197,6 +197,7 @@ export function Sidebar({
           { id: 'schedule', icon: Calendar, label: 'Raspored' },
           { id: 'handover', icon: ArrowLeftRight, label: 'Primopredaja' },
           { id: 'outofstock', icon: AlertTriangle, label: 'Lista 86' },
+          { id: 'responsibility', icon: Users, label: 'Plan odgovornosti' },
           { id: 'settings', icon: Settings, label: 'Postavke' },
         ].map(({ id, icon: Icon, label }) => (
           <button
