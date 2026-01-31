@@ -22,10 +22,11 @@ import {
 import { Sidebar } from './components/Sidebar';
 import { ScheduleGrid } from './components/Schedule';
 import { ChatInterface } from './components/Chat';
+import { DailyReport } from './components/DailyReport';
 import { ShiftHandover } from './components/ShiftHandover';
 import { processScheduleRequest, isAiConfigured } from './services/ai';
 
-type PageType = 'schedule' | 'handover' | 'settings';
+type PageType = 'schedule' | 'handover' | 'report' | 'settings';
 
 const INITIAL_EMPLOYEES: Employee[] = [
   { id: 'emp-1', name: 'Marko Marković', role: Role.SERVER },
@@ -62,36 +63,26 @@ const DEFAULT_AI_RULES = `• Svaki radnik ima max 5 smjena sedmično
 • Vikendi su za iskusne radnike`;
 
 function App() {
-  // Run migrations on app start
   useEffect(() => {
     runMigrations();
   }, []);
 
-  // Page state
   const [currentPage, setCurrentPage] = useState<PageType>('schedule');
-
-  // State management with localStorage persistence
   const [employees, setEmployees] = useState<Employee[]>(() => 
     getStorageItem(STORAGE_KEYS.EMPLOYEES, INITIAL_EMPLOYEES)
   );
-  
   const [duties, setDuties] = useState<Duty[]>(() => 
     getStorageItem(STORAGE_KEYS.DUTIES, INITIAL_DUTIES)
   );
-  
   const [shifts, setShifts] = useState<Shift[]>(() => 
     getStorageItem(STORAGE_KEYS.SHIFTS, INITIAL_SHIFTS)
   );
-  
   const [assignments, setAssignments] = useState<Assignment[]>(() => 
     getStorageItem(STORAGE_KEYS.ASSIGNMENTS, [])
   );
-  
   const [aiRules, setAiRules] = useState<string>(() => 
     getStorageItem(STORAGE_KEYS.AI_RULES, DEFAULT_AI_RULES)
   );
-
-  // UI State
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(getMonday(new Date()));
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -99,15 +90,12 @@ function App() {
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
-  // Computed values
   const currentWeekId = useMemo(() => formatDateToId(currentWeekStart), [currentWeekStart]);
-  
   const weekAssignments = useMemo(() => 
     assignments.filter(a => a.weekId === currentWeekId),
     [assignments, currentWeekId]
   );
 
-  // CRUD Operations - Employees
   const addEmployee = (newEmp: Omit<Employee, 'id'>) => {
     const updated = [...employees, { ...newEmp, id: generateEmployeeId() }];
     setEmployees(updated);
@@ -120,11 +108,9 @@ function App() {
     const updated = employees.filter(e => e.id !== id);
     setEmployees(updated);
     setStorageItem(STORAGE_KEYS.EMPLOYEES, updated);
-    
     const filteredAssignments = assignments.filter(a => a.employeeId !== id);
     setAssignments(filteredAssignments);
     setStorageItem(STORAGE_KEYS.ASSIGNMENTS, filteredAssignments);
-    
     if (employee) toast.success(`Uklonjen radnik: ${employee.name}`);
   };
 
@@ -135,7 +121,6 @@ function App() {
     toast.success('Radnik ažuriran');
   };
 
-  // CRUD Operations - Duties
   const addDuty = (newDuty: Omit<Duty, 'id'>) => {
     const updated = [...duties, { ...newDuty, id: generateDutyId() }];
     setDuties(updated);
@@ -151,7 +136,6 @@ function App() {
     if (duty) toast.success(`Uklonjena dužnost: ${duty.label}`);
   };
 
-  // CRUD Operations - Shifts
   const addShift = (newShift: Omit<Shift, 'id'>) => {
     const updated = [...shifts, { ...newShift, id: generateShiftId() }];
     setShifts(updated);
@@ -164,15 +148,12 @@ function App() {
     const updated = shifts.filter(s => s.id !== id);
     setShifts(updated);
     setStorageItem(STORAGE_KEYS.SHIFTS, updated);
-    
     const filteredAssignments = assignments.filter(a => a.shiftId !== id);
     setAssignments(filteredAssignments);
     setStorageItem(STORAGE_KEYS.ASSIGNMENTS, filteredAssignments);
-    
     if (shift) toast.success(`Uklonjena smjena: ${shift.label}`);
   };
 
-  // Assignment Operations
   const removeAssignment = (id: string) => {
     const filtered = assignments.filter(a => a.id !== id);
     setAssignments(filtered);
@@ -206,11 +187,9 @@ function App() {
     toast.success(`Dodijeljen: ${employee?.name || '?'}`);
   };
 
-  // Navigation
   const navigateWeek = (direction: number) => 
     setCurrentWeekStart(addWeeks(currentWeekStart, direction));
 
-  // AI Chat
   const handleAiMessage = async (text: string) => {
     if (!isAiConfigured()) {
       toast.error('API ključ nije podešen. Dodajte VITE_GROQ_API_KEY u .env.local');
@@ -271,19 +250,18 @@ function App() {
     setStorageItem(STORAGE_KEYS.ASSIGNMENTS, updated);
 
     setChatMessages(prev => prev.map(m => 
-      m.id === messageId ? { ...m, status: 'applied' } : m
+      m.id === messageId ? { ...m, status: 'applied' as const } : m
     ));
     toast.success('Izmjene primijenjene');
   };
 
   const handleDiscardChanges = (messageId: string) => {
     setChatMessages(prev => prev.map(m => 
-      m.id === messageId ? { ...m, status: 'discarded' } : m
+      m.id === messageId ? { ...m, status: 'discarded' as const } : m
     ));
     toast.success('Izmjene odbacene');
   };
 
-  // Import/Export
   const handleImportData = (data: any) => {
     try {
       if (data.employees) {
@@ -325,7 +303,6 @@ function App() {
     }
   };
 
-  // Page navigation handler for Sidebar
   const handlePageChange = (page: string) => {
     setCurrentPage(page as PageType);
     setIsSidebarOpen(false);
@@ -335,7 +312,6 @@ function App() {
     <div className="flex h-screen bg-slate-100 overflow-hidden font-sans">
       <Toaster position="top-right" />
       
-      {/* Sidebar */}
       <div 
         className={`fixed lg:static inset-y-0 left-0 z-50 transition-all duration-300 ease-in-out bg-white ${
           isSidebarOpen 
@@ -368,7 +344,6 @@ function App() {
         />
       </div>
 
-      {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
         {currentPage === 'schedule' && (
           <ScheduleGrid 
@@ -389,6 +364,10 @@ function App() {
           <ShiftHandover />
         )}
 
+        {currentPage === 'report' && (
+          <DailyReport />
+        )}
+
         {currentPage === 'settings' && (
           <div className="flex-1 flex items-center justify-center bg-slate-100">
             <div className="text-center">
@@ -399,7 +378,6 @@ function App() {
           </div>
         )}
         
-        {/* Mobile FABs */}
         {!isSidebarOpen && (
            <button 
             className="lg:hidden absolute top-6 left-6 z-[60] p-3 bg-white text-slate-800 rounded-xl shadow-xl border border-slate-100"
@@ -410,7 +388,6 @@ function App() {
         )}
       </div>
 
-      {/* Chat Interface */}
       <div 
         className={`fixed lg:static inset-y-0 right-0 z-50 transition-all duration-300 ease-in-out bg-white ${
           isChatOpen 
@@ -431,7 +408,6 @@ function App() {
         />
       </div>
 
-      {/* Mobile Overlay */}
       {(isSidebarOpen || isChatOpen) && (
         <div 
           className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 lg:hidden"
