@@ -10,6 +10,8 @@ export interface ChatInterfaceProps {
   onDiscardChanges: (messageId: string) => void;
   isLoading: boolean;
   onClose: () => void;
+  error?: string | null;
+  onClearError?: () => void;
 }
 
 export function ChatInterface({
@@ -20,9 +22,10 @@ export function ChatInterface({
   onDiscardChanges,
   isLoading,
   onClose,
+  error = null,
+  onClearError = () => {},
 }: ChatInterfaceProps) {
   const [input, setInput] = useState('');
-  const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -33,7 +36,6 @@ export function ChatInterface({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (input.trim() && !isLoading) {
-      setError(null);
       onSendMessage(input.trim());
       setInput('');
     }
@@ -52,16 +54,6 @@ export function ChatInterface({
       minute: '2-digit',
     });
   };
-
-  // Check for error messages in chat
-  useEffect(() => {
-    const lastMessage = messages[messages.length - 1];
-    if (lastMessage?.role === 'model' && lastMessage.text.includes('API')) {
-      if (lastMessage.text.includes('greška') || lastMessage.text.includes('error')) {
-        setError('Provjerite API ključ u .env.local fajlu');
-      }
-    }
-  }, [messages]);
 
   return (
     <div className="flex flex-col h-full bg-slate-50" role="region" aria-label="AI Chat">
@@ -96,7 +88,7 @@ export function ChatInterface({
           <AlertCircle size={16} className="text-red-600 mt-0.5 flex-shrink-0" />
           <p className="text-sm text-red-700">{error}</p>
           <button 
-            onClick={() => setError(null)}
+            onClick={onClearError}
             className="ml-auto text-red-500 hover:text-red-700"
             aria-label="Zatvori grešku"
           >
@@ -117,6 +109,9 @@ export function ChatInterface({
             <Bot size={48} className="mx-auto mb-3 text-slate-300" />
             <p className="text-sm">Pitaj me da kreiram raspored!</p>
             <p className="text-xs mt-1">npr. "Napravi raspored za ovu sedmicu"</p>
+            <p className="text-xs mt-4 text-primary-600">
+              💡 Besplatno uz Groq API
+            </p>
           </div>
         )}
         

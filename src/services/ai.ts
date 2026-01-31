@@ -1,14 +1,14 @@
 // ===========================================
 // AI Service for Shift Scheduler
-// Handles communication with MiniMax API
+// Handles communication with Groq API (free, fast)
 // ===========================================
 
 import { ScheduleState, AIResponse } from '../types';
 
-const API_BASE = "https://api.minimax.io/anthropic/v1/messages";
+const API_BASE = 'https://api.groq.com/openai/v1/chat/completions';
 
 const getApiKey = (): string => {
-  return import.meta.env.VITE_MINIMAX_API_KEY || '';
+  return import.meta.env.VITE_GROQ_API_KEY || '';
 };
 
 const cleanJsonOutput = (text: string): string => {
@@ -29,128 +29,118 @@ export const processScheduleRequest = async (
   const apiKey = getApiKey();
 
   if (!apiKey) {
-    throw new Error("API ključ nije pronađen. Dodaj VITE_MINIMAX_API_KEY u .env.local fajl.");
+    throw new Error('API ključ nije pronađen. Dodaj VITE_GROQ_API_KEY u .env.local fajl.');
   }
 
-  const allowedDuties = currentState.duties.map(d => d.label).join(", ");
+  const allowedDuties = currentState.duties.map(d => d.label).join(', ');
 
-  const simplifiedEmployees = currentState.employees.map(e => ({
+  const employeesWithAvailability = currentState.employees.map(e => ({
     id: e.id,
     name: e.name,
     role: e.role,
-    availability: e.availability
+    availability: e.availability || ALL_DAYS
   }));
 
-  const simplifiedShifts = currentState.shifts.map(s => ({
-    id: s.id,
-    label: s.label,
-    day: s.day,
-    time: `${s.startTime}-${s.endTime}`
-  }));
-
-  const simplifiedAssignments = currentState.assignments.map(a => ({
-    shiftId: a.shiftId,
-    employeeId: a.employeeId,
-    specialDuty: a.specialDuty
-  }));
-
-  const systemInstruction = `Ti si ShiftMaster AI, precizan algoritam za raspoređivanje osoblja u restoranu.
+  const systemMessage = `Ti si ShiftMaster AI, precizan algoritam za raspoređivanje osoblja u restoranu.
 
 CILJ: Generiši ili ažuriraj JSON objekat koji predstavlja raspored smjena.
 
 PRIORITET 1: KORISNIČKA PRAVILA (OBAVEZNO)
-${currentState.aiRules || "Nema posebnih pravila."}
+${currentState.aiRules || 'Nema posebnih pravila.'}
 
 PRIORITET 2: OGRANIČENJA
 - Dostupnost: Radnik se NE SMIJE dodijeliti smjeni ako dan nije u availability listi.
-- Uloge: Poštuj uloge (Bartender, Server, Head Waiter, itd.)
+- Uloge: Poštuj uloge (Chef, Bartender, Server, itd.)
 
 PRIORITET 3: KONTEKST
-- Radnici: ${JSON.stringify(simplifiedEmployees)}
-- Smjene: ${JSON.stringify(simplifiedShifts)}
-- Trenutni raspored: ${JSON.stringify(simplifiedAssignments)}
+- Radnici: ${JSON.stringify(employeesWithAvailability)}
+- Smjene: ${JSON.stringify(currentState.shifts)}
+- Trenutni raspored: ${JSON.stringify(currentState.assignments)}
 - Dozvoljene dužnosti: [${allowedDuties}]
+- Trenutna sedmica: ${currentState.currentWeekId}
 
-INSTRUKCIJE ZA IZLAZ:
-1. 'newAssignments' MORA sadržavati KOMPLETAN spisak svih dodjela za ovu nedjelju.
-   - Prepisi sve postojeće dodjele koje se ne mijenjaju.
-   - Dodaj/ukloni prema zahtjevu korisnika.
-   - NE VRACAJ samo diff!
-
-2. Vrati SAMO validan JSON (bez markdown), sa ovom strukturom:
+IZLAZ (SAMO JSON, bez markdown):
 {
-  "message": "Objašnjenje na srpskom šta je urađeno",
+  "message": "Objašnjenje na srpskom/hrvatskom šta je urađeno",
   "newAssignments": [{"shiftId": "id", "employeeId": "id", "specialDuty": "duty"}],
   "employeesToAdd": [{"name": "Ime", "role": "Uloga"}]
-}
-
-ZAHTJEV: "${prompt}"`;
+}`;
 
   try {
     const response = await fetch(API_BASE, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
+        'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'MiniMax-M2.1',
-        max_tokens: 4096,
-        temperature: 0.1,
-        system: systemInstruction,
+        model: 'llama3-8b-8192', // Fast, free tier available
         messages: [
-          { role: 'user', content: 'Generiši raspored i vrati JSON.' }
+          { role: 'system', content: systemMessage },
+          { role: 'user', content: prompt }
         ],
+        temperature: 0.1,
+        max_tokens: 4096,
       }),
+      signal,
     });
 
     if (signal?.aborted) {
-      throw new Error("AbortError");
+      throw new Error('AbortError');
     }
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error("MiniMax API Error:", response.status, errorText);
-      throw new Error(`API greška: ${response.status}`);
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Groq API Error:', response.status, errorData);
+      throw new Error(`API greška (${response.status}): ${errorData.error?.message || 'Nepoznata greška'}`);
     }
 
     const data = await response.json();
 
     if (signal?.aborted) {
-      throw new Error("AbortError");
+      throw new Error('AbortError');
     }
 
-    const content = data.content?.[0]?.text || '';
+    const content = data.choices?.[0]?.message?.content || '';
     const cleanedText = cleanJsonOutput(content);
 
     try {
       const parsed = JSON.parse(cleanedText);
       return {
-        message: parsed.message,
+        message: parsed.message || 'Raspored je generisan.',
         assignments: parsed.newAssignments || [],
         newEmployees: parsed.employeesToAdd || [],
       };
     } catch (parseError) {
-      console.error("JSON Parse Error. Raw:", content);
-      throw new Error("Format odgovora nije ispravan.");
+      console.error('JSON Parse Error. Raw:', content);
+      throw new Error('Format odgovora nije ispravan. Pokušajte ponovo.');
     }
   } catch (error: any) {
-    if (error.message === "AbortError" || signal?.aborted) {
+    if (error.name === 'AbortError' || error.message === 'AbortError') {
       throw error;
     }
-    console.error("AI Service Error:", error);
-    throw new Error(error.message || "Došlo je do greške u komunikaciji sa AI servisom.");
+    console.error('AI Service Error:', error);
+    throw new Error(error.message || 'Došlo je do greške u komunikaciji sa AI servisom.');
   }
 };
 
-// Helper function to convert AI response to Assignments
-export function aiResponseToAssignments(
-  _response: AIResponse,
-  _currentWeekId: string,
-  existingAssignments: any[]
-): any[] {
-  // For now, just return existing - actual implementation would merge AI suggestions
-  return existingAssignments;
-}
+// Helper to check if API is configured
+export const isAiConfigured = (): boolean => {
+  return !!getApiKey();
+};
+
+// Helper to get API status
+export const getAiStatus = (): { configured: boolean; message: string } => {
+  const key = getApiKey();
+  if (!key) {
+    return { 
+      configured: false, 
+      message: 'API ključ nije podešen. Dodajte VITE_GROQ_API_KEY u .env.local' 
+    };
+  }
+  return { configured: true, message: 'AI je spreman za korištenje.' };
+};
+
+// Export ALL_DAYS for use in prompts
+import { DayOfWeek, ALL_DAYS } from '../types';
+export { DayOfWeek, ALL_DAYS };

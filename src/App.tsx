@@ -3,7 +3,7 @@
 // Shift Scheduler - Restaurant Shift Management
 // ===========================================
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
 import { Menu } from 'lucide-react';
 import { STORAGE_KEYS, runMigrations, getStorageItem, setStorageItem, clearAllStorage } from './utils/storage';
@@ -16,11 +16,13 @@ import {
   Duty, 
   ChatMessage, 
   Role, 
-  DayOfWeek 
+  DayOfWeek,
+  ScheduleState 
 } from './types';
 import { Sidebar } from './components/Sidebar';
 import { ScheduleGrid } from './components/Schedule';
 import { ChatInterface } from './components/Chat';
+import { processScheduleRequest, isAiConfigured, getAiStatus } from './services/ai';
 
 const INITIAL_EMPLOYEES: Employee[] = [
   { id: 'emp-1', name: 'Marko Marković', role: Role.SERVER },
@@ -89,6 +91,10 @@ function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isChatOpen, setIsChatOpen] = useState(true);
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  
+  // Abort controller for AI requests
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Computed values
   const currentWeekId = useMemo(() => formatDateToId(currentWeekStart), [currentWeekStart]);
@@ -117,6 +123,13 @@ function App() {
     setStorageItem(STORAGE_KEYS.ASSIGNMENTS, filteredAssignments);
     
     if (employee) toast.success(`Uklonjen radnik: ${employee.name}`);
+  };
+
+  const updateEmployee = (updatedEmployee: Employee) => {
+    const updated = employees.map(e => e.id === updatedEmployee.id ? updatedEmployee : e);
+    setEmployees(updated);
+    setStorageItem(STORAGE_KEYS.EMPLOYEES, updated);
+    toast.success('Radnik ažuriran');
   };
 
   // CRUD Operations - Duties
@@ -195,8 +208,15 @@ function App() {
   const navigateWeek = (direction: number) => 
     setCurrentWeekStart(addWeeks(currentWeekStart, direction));
 
-  // AI Chat (placeholder - to be implemented)
+  // AI Chat - Full Implementation
   const handleAiMessage = async (text: string) => {
+    // Check if AI is configured
+    if (!isAiConfigured()) {
+      const status = getAiStatus();
+      toast.error(status.message);
+      return;
+    }
+
     const userMsg: ChatMessage = { 
       id: Date.now().toString(), 
       role: 'user', 
@@ -205,38 +225,101 @@ function App() {
     };
     setChatMessages(prev => [...prev, userMsg]);
     setIsAiLoading(true);
+    setAiError(null);
 
-    // Placeholder AI response
-    setTimeout(() => {
+    // Create abort controller for cancellation
+    abortControllerRef.current = new AbortController();
+
+    try {
+      const state: ScheduleState = {
+        employees,
+        shifts,
+        assignments,
+        duties,
+        currentWeekId,
+        aiRules,
+      };
+
+      const response = await processScheduleRequest(text, state, abortControllerRef.current.signal);
+
       const modelMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'model',
-        text: 'AI funkcionalnost će uskoro biti implementirana. Za sada možete ručno kreirati raspored koristeći dugmad za dodavanje radnika i smjena.',
+        text: response.message,
         timestamp: Date.now(),
-        status: 'pending'
+        status: 'pending',
+        pendingAssignments: response.assignments,
+        pendingEmployees: response.newEmployees,
       };
+
       setChatMessages(prev => [...prev, modelMsg]);
+      toast.success('AI je generisao prijedlog rasporeda');
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        toast.success('AI prekinut');
+      } else {
+        const errorMsg = error.message || 'Došlo je do greške';
+        setAiError(errorMsg);
+        
+        const errorResponseMsg: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          role: 'model',
+          text: `Greška: ${errorMsg}`,
+          timestamp: Date.now(),
+          status: 'discarded',
+        };
+        setChatMessages(prev => [...prev, errorResponseMsg]);
+      }
+    } finally {
       setIsAiLoading(false);
-    }, 1000);
+      abortControllerRef.current = null;
+    }
   };
 
   const handleApplyChanges = (messageId: string) => {
+    const message = chatMessages.find(m => m.id === messageId);
+    if (!message?.pendingAssignments) return;
+
+    // Add new assignments
+    const newAssignments: Assignment[] = message.pendingAssignments.map(a => ({
+      ...a,
+      id: generateAssignmentId(),
+      weekId: currentWeekId,
+    }));
+
+    const updated = [...assignments, ...newAssignments];
+    setAssignments(updated);
+    setStorageItem(STORAGE_KEYS.ASSIGNMENTS, updated);
+
+    // Add new employees if any
+    if (message.pendingEmployees) {
+      const newEmployees = message.pendingEmployees.map(emp => ({
+        ...emp,
+        id: generateEmployeeId(),
+      })) as Employee[];
+
+      const updatedEmployees = [...employees, ...newEmployees];
+      setEmployees(updatedEmployees);
+      setStorageItem(STORAGE_KEYS.EMPLOYEES, updatedEmployees);
+    }
+
     setChatMessages(prev => prev.map(m => 
-      m.id === messageId ? { ...m, status: 'applied' } : m
+      m.id === messageId ? { ...m, status: 'applied' as const } : m
     ));
     toast.success('Izmjene primijenjene');
   };
 
   const handleDiscardChanges = (messageId: string) => {
     setChatMessages(prev => prev.map(m => 
-      m.id === messageId ? { ...m, status: 'discarded' } : m
+      m.id === messageId ? { ...m, status: 'discarded' as const } : m
     ));
     toast.success('Izmjene odbacene');
   };
 
   const handleCancelAi = () => {
-    setIsAiLoading(false);
-    toast.success('AI prekinut');
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
   };
 
   // Import/Export
@@ -281,6 +364,14 @@ function App() {
     }
   };
 
+  // Check AI status on mount
+  useEffect(() => {
+    const status = getAiStatus();
+    if (!status.configured) {
+      console.warn('[AI]', status.message);
+    }
+  }, []);
+
   return (
     <div className="flex h-screen bg-slate-100 overflow-hidden font-sans">
       <Toaster position="top-right" />
@@ -297,14 +388,11 @@ function App() {
           employees={employees} 
           duties={duties} 
           shifts={shifts}
+          assignments={assignments}
           aiRules={aiRules} 
           onAddEmployee={addEmployee} 
-          onRemoveEmployee={removeEmployee}
-          onUpdateEmployee={(emp) => {
-            const updated = employees.map(e => e.id === emp.id ? emp : e);
-            setEmployees(updated);
-            setStorageItem(STORAGE_KEYS.EMPLOYEES, updated);
-          }} 
+          onRemoveEmployee={removeEmployee} 
+          onUpdateEmployee={updateEmployee}
           onAddDuty={addDuty} 
           onRemoveDuty={removeDuty} 
           onAddShift={addShift}
@@ -361,6 +449,8 @@ function App() {
           onDiscardChanges={handleDiscardChanges} 
           isLoading={isAiLoading} 
           onClose={() => setIsChatOpen(false)}
+          error={aiError}
+          onClearError={() => setAiError(null)}
         />
       </div>
 
