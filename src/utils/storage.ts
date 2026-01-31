@@ -3,7 +3,7 @@
 // Handles localStorage cleanup and data consistency
 // ===========================================
 
-import { Assignment } from '../types';
+import { Assignment, ShiftTemplate } from '../types';
 
 const STORAGE_KEYS = {
   EMPLOYEES: 'shift_scheduler_employees',
@@ -11,10 +11,11 @@ const STORAGE_KEYS = {
   SHIFTS: 'shift_scheduler_shifts',
   ASSIGNMENTS: 'shift_scheduler_assignments',
   AI_RULES: 'shift_scheduler_ai_rules',
+  TEMPLATES: 'shift_scheduler_templates',
   VERSION: 'shift_scheduler_version',
 };
 
-const CURRENT_VERSION = 1;
+const CURRENT_VERSION = 2;
 
 /**
  * Get item from localStorage with error handling
@@ -57,9 +58,14 @@ export function runMigrations(): void {
   
   console.log(`[Storage] Running migrations: ${storedVersion} -> ${CURRENT_VERSION}`);
   
-  // Migration from v0 to v1: Clean up stale assignments
+  // Migration v1: Clean up stale assignments
   if (storedVersion < 1) {
     migrateToV1();
+  }
+  
+  // Migration v2: Add templates support
+  if (storedVersion < 2) {
+    migrateToV2();
   }
   
   // Save current version
@@ -74,40 +80,36 @@ export function runMigrations(): void {
 function migrateToV1(): void {
   const assignments = getStorageItem<Assignment[]>(STORAGE_KEYS.ASSIGNMENTS, []);
   
-  if (assignments.length === 0) {
-    console.log('[Storage] No assignments to migrate');
-    return;
-  }
-  
-  console.log(`[Storage] Migrating ${assignments.length} assignments...`);
+  if (assignments.length === 0) return;
   
   // Find duplicates (same shiftId + employeeId + weekId)
   const seen = new Set<string>();
   const validAssignments: Assignment[] = [];
-  const duplicatesRemoved = new Set<string>();
   
   for (const assignment of assignments) {
     const key = `${assignment.shiftId}-${assignment.employeeId}-${assignment.weekId}`;
     
-    if (seen.has(key)) {
-      duplicatesRemoved.add(assignment.id);
-      continue;
-    }
+    if (seen.has(key)) continue;
     
     // Validate required fields
-    if (!assignment.shiftId || !assignment.employeeId || !assignment.weekId) {
-      console.log(`[Storage] Removing invalid assignment:`, assignment.id);
-      continue;
-    }
+    if (!assignment.shiftId || !assignment.employeeId || !assignment.weekId) continue;
     
     seen.add(key);
     validAssignments.push(assignment);
   }
   
-  // Save cleaned assignments
   setStorageItem(STORAGE_KEYS.ASSIGNMENTS, validAssignments);
-  
-  console.log(`[Storage] Migration complete: ${validAssignments.length} valid, ${duplicatesRemoved.size} duplicates removed`);
+  console.log(`[Storage] v1 migration: ${validAssignments.length} valid assignments`);
+}
+
+/**
+ * Migration v2: Initialize templates storage
+ */
+function migrateToV2(): void {
+  // Ensure templates key exists
+  const templates = getStorageItem<ShiftTemplate[]>(STORAGE_KEYS.TEMPLATES, []);
+  setStorageItem(STORAGE_KEYS.TEMPLATES, templates);
+  console.log(`[Storage] v2 migration: templates initialized`);
 }
 
 /**
@@ -122,6 +124,67 @@ export function clearAllStorage(): void {
     }
   });
   console.log('[Storage] All data cleared');
+}
+
+/**
+ * Export data to JSON file
+ */
+export function exportToJSON(data: any, filename: string): void {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Export data to CSV
+ */
+export function exportToCSV(data: any[], filename: string): void {
+  if (data.length === 0) return;
+  
+  const headers = Object.keys(data[0]);
+  const csvContent = [
+    headers.join(','),
+    ...data.map(row => 
+      headers.map(h => {
+        const val = row[h];
+        // Escape quotes and wrap in quotes if contains comma
+        if (typeof val === 'string' && (val.includes(',') || val.includes('"'))) {
+          return `"${val.replace(/"/g, '""')}"`;
+        }
+        return val;
+      }).join(',')
+    )
+  ].join('\n');
+  
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Import JSON from file
+ */
+export function importFromJSON(file: File): Promise<any> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        resolve(JSON.parse(e.target?.result as string));
+      } catch (error) {
+        reject(new Error('Invalid JSON file'));
+      }
+    };
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.readAsText(file);
+  });
 }
 
 export { STORAGE_KEYS };

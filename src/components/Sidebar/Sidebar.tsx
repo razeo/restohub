@@ -1,14 +1,18 @@
 import React, { useState } from 'react';
-import { Users, Calendar, Tag, Settings, Download, Upload, RotateCcw, Plus, Trash2, X } from 'lucide-react';
-import { Employee, Shift, Duty, Role, DayOfWeek } from '../../types';
+import { Users, Calendar, Tag, Settings, Download, Upload, RotateCcw, Plus, Trash2, X, FileText, Save, FolderOpen } from 'lucide-react';
+import { Employee, Shift, Duty, Role, DayOfWeek, ALL_DAYS, ShiftTemplate } from '../../types';
+import { generateId } from '../../utils/id';
+import { exportToCSV, exportToJSON } from '../../utils/storage';
 
 export interface SidebarProps {
   employees: Employee[];
   duties: Duty[];
   shifts: Shift[];
+  assignments?: any[];
   aiRules: string;
   onAddEmployee: (employee: Omit<Employee, 'id'>) => void;
   onRemoveEmployee: (id: string) => void;
+  onUpdateEmployee: (employee: Employee) => void;
   onAddDuty: (duty: Omit<Duty, 'id'>) => void;
   onRemoveDuty: (id: string) => void;
   onAddShift: (shift: Omit<Shift, 'id'>) => void;
@@ -19,15 +23,17 @@ export interface SidebarProps {
   onClose: () => void;
 }
 
-type TabType = 'employees' | 'shifts' | 'duties' | 'ai' | 'settings';
+type TabType = 'employees' | 'shifts' | 'duties' | 'templates' | 'ai' | 'settings';
 
 export function Sidebar({
   employees,
   duties,
   shifts,
+  assignments = [],
   aiRules,
   onAddEmployee,
   onRemoveEmployee,
+  onUpdateEmployee,
   onAddDuty,
   onRemoveDuty,
   onAddShift,
@@ -39,9 +45,11 @@ export function Sidebar({
 }: SidebarProps) {
   const [activeTab, setActiveTab] = useState<TabType>('employees');
   const [isAdding, setIsAdding] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   // Form states
-  const [newEmployee, setNewEmployee] = useState({ name: '', role: Role.SERVER });
+  const [newEmployee, setNewEmployee] = useState({ name: '', role: Role.SERVER, availability: [] as DayOfWeek[] });
+  const [editEmployee, setEditEmployee] = useState<Employee | null>(null);
   const [newDuty, setNewDuty] = useState({ label: '' });
   const [newShift, setNewShift] = useState({ 
     day: DayOfWeek.MONDAY, 
@@ -49,34 +57,117 @@ export function Sidebar({
     endTime: '16:00', 
     label: '' 
   });
+  const [newTemplate, setNewTemplate] = useState({ name: '', description: '' });
+
+  // Load templates from localStorage
+  const [templates, setTemplates] = useState<ShiftTemplate[]>(() => {
+    try {
+      const stored = localStorage.getItem('shift_scheduler_templates');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const saveTemplates = (newTemplates: ShiftTemplate[]) => {
+    setTemplates(newTemplates);
+    localStorage.setItem('shift_scheduler_templates', JSON.stringify(newTemplates));
+  };
 
   const handleAddEmployee = () => {
     if (newEmployee.name.trim()) {
-      onAddEmployee({ name: newEmployee.name.trim(), role: newEmployee.role });
-      setNewEmployee({ name: '', role: Role.SERVER });
-      setIsAdding(false);
-    }
-  };
-
-  const handleAddDuty = () => {
-    if (newDuty.label.trim()) {
-      onAddDuty({ label: newDuty.label.trim() });
-      setNewDuty({ label: '' });
-      setIsAdding(false);
-    }
-  };
-
-  const handleAddShift = () => {
-    if (newShift.label.trim()) {
-      onAddShift({
-        day: newShift.day,
-        startTime: newShift.startTime,
-        endTime: newShift.endTime,
-        label: newShift.label.trim(),
+      onAddEmployee({ 
+        name: newEmployee.name.trim(), 
+        role: newEmployee.role,
+        availability: newEmployee.availability 
       });
-      setNewShift({ day: DayOfWeek.MONDAY, startTime: '08:00', endTime: '16:00', label: '' });
+      setNewEmployee({ name: '', role: Role.SERVER, availability: [] });
       setIsAdding(false);
     }
+  };
+
+  const handleUpdateEmployee = () => {
+    if (editEmployee && editEmployee.name.trim()) {
+      onUpdateEmployee(editEmployee);
+      setEditEmployee(null);
+      setEditingId(null);
+    }
+  };
+
+  const toggleAvailability = (day: DayOfWeek) => {
+    setNewEmployee(prev => ({
+      ...prev,
+      availability: prev.availability.includes(day)
+        ? prev.availability.filter(d => d !== day)
+        : [...prev.availability, day]
+    }));
+  };
+
+  const toggleEditAvailability = (day: DayOfWeek, employee: Employee) => {
+    const newAvailability = employee.availability?.includes(day)
+      ? employee.availability.filter(d => d !== day)
+      : [...(employee.availability || []), day];
+    setEditEmployee({ ...employee, availability: newAvailability });
+  };
+
+  const handleSaveTemplate = () => {
+    if (newTemplate.name.trim() && shifts.length > 0) {
+      const template: ShiftTemplate = {
+        id: generateId('tpl'),
+        name: newTemplate.name.trim(),
+        description: newTemplate.description.trim(),
+        shifts: [...shifts],
+        createdAt: Date.now(),
+      };
+      saveTemplates([...templates, template]);
+      setNewTemplate({ name: '', description: '' });
+      setIsAdding(false);
+    }
+  };
+
+  const handleLoadTemplate = (template: ShiftTemplate) => {
+    if (window.confirm(`Učitati šablon "${template.name}"? Ovo će zamijeniti trenutne smjene.`)) {
+      onImportData({ shifts: template.shifts });
+    }
+  };
+
+  const handleDeleteTemplate = (id: string) => {
+    if (window.confirm('Obriši ovaj šablon?')) {
+      saveTemplates(templates.filter(t => t.id !== id));
+    }
+  };
+
+  const handleExportCSV = () => {
+    if (assignments.length === 0) {
+      alert('Nema dodjela za export');
+      return;
+    }
+    
+    // Create CSV with employee names
+    const employeeMap = new Map(employees.map(e => [e.id, e.name]));
+    const shiftMap = new Map(shifts.map(s => [s.id, s]));
+    
+    const csvData = assignments.map(a => {
+      const shift = shiftMap.get(a.shiftId);
+      return {
+        'Radnik': employeeMap.get(a.employeeId) || '?',
+        'Smjena': shift?.label || '?',
+        'Dan': shift?.day || '?',
+        'Vrijeme': shift ? `${shift.startTime}-${shift.endTime}` : '?',
+      };
+    });
+    
+    exportToCSV(csvData, `raspored-${new Date().toISOString().split('T')[0]}.csv`);
+  };
+
+  const handleExportJSON = () => {
+    exportToJSON({
+      employees,
+      shifts,
+      duties,
+      assignments,
+      exportedAt: new Date().toISOString(),
+    }, `shift-scheduler-${new Date().toISOString().split('T')[0]}.json`);
   };
 
   const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -88,27 +179,11 @@ export function Sidebar({
           const data = JSON.parse(event.target?.result as string);
           onImportData(data);
         } catch (error) {
-          console.error('Import error:', error);
+          alert('Greška pri uvozu: nevažeći JSON');
         }
       };
       reader.readAsText(file);
     }
-  };
-
-  const handleFileExport = () => {
-    const data = {
-      employees,
-      shifts,
-      duties,
-      aiRules,
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `shift-scheduler-${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
   };
 
   return (
@@ -125,18 +200,19 @@ export function Sidebar({
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-slate-200">
+      <div className="flex border-b border-slate-200 overflow-x-auto">
         {[
           { id: 'employees', icon: Users, label: 'Radnici' },
           { id: 'shifts', icon: Calendar, label: 'Smjene' },
           { id: 'duties', icon: Tag, label: 'Dužnosti' },
+          { id: 'templates', icon: FileText, label: 'Šabloni' },
           { id: 'ai', icon: Settings, label: 'AI' },
           { id: 'settings', icon: Settings, label: 'Postavke' },
         ].map(({ id, icon: Icon, label }) => (
           <button
             key={id}
             onClick={() => setActiveTab(id as TabType)}
-            className={`flex-1 p-3 flex flex-col items-center gap-1 text-xs transition-colors ${
+            className={`flex-shrink-0 p-3 flex flex-col items-center gap-1 text-xs transition-colors ${
               activeTab === id 
                 ? 'text-primary-600 border-b-2 border-primary-600 bg-primary-50' 
                 : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
@@ -150,23 +226,54 @@ export function Sidebar({
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto scrollbar-thin">
+        {/* EMPLOYEES TAB */}
         {activeTab === 'employees' && (
           <div className="p-4 space-y-3">
             {employees.map(employee => (
-              <div key={employee.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                <div>
-                  <p className="font-medium text-slate-800">{employee.name}</p>
-                  <p className="text-xs text-slate-500">{employee.role}</p>
+              <div key={employee.id} className="p-3 bg-slate-50 rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <p className="font-medium text-slate-800">{employee.name}</p>
+                    <p className="text-xs text-slate-500">{employee.role}</p>
+                  </div>
+                  <div className="flex gap-1">
+                    <button 
+                      onClick={() => {
+                        setEditEmployee(employee);
+                        setEditingId(employee.id);
+                      }}
+                      className="p-2 text-slate-500 hover:bg-slate-200 rounded-lg"
+                    >
+                      <Settings size={14} />
+                    </button>
+                    <button 
+                      onClick={() => onRemoveEmployee(employee.id)}
+                      className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
-                <button 
-                  onClick={() => onRemoveEmployee(employee.id)}
-                  className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
-                >
-                  <Trash2 size={16} />
-                </button>
+                {employee.availability && employee.availability.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {ALL_DAYS.map(day => (
+                      <span 
+                        key={day}
+                        className={`text-[10px] px-2 py-0.5 rounded ${
+                          employee.availability!.includes(day)
+                            ? 'bg-primary-100 text-primary-700'
+                            : 'bg-slate-100 text-slate-400'
+                        }`}
+                      >
+                        {day.slice(0, 3)}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
             
+            {/* Add Employee Form */}
             {isAdding && (
               <div className="p-4 bg-primary-50 rounded-lg space-y-3">
                 <input
@@ -185,6 +292,25 @@ export function Sidebar({
                     <option key={role} value={role}>{role}</option>
                   ))}
                 </select>
+                <div>
+                  <p className="text-sm text-slate-600 mb-2">Dostupnost:</p>
+                  <div className="flex flex-wrap gap-1">
+                    {ALL_DAYS.map(day => (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => toggleAvailability(day)}
+                        className={`text-xs px-2 py-1 rounded transition-colors ${
+                          newEmployee.availability.includes(day)
+                            ? 'bg-primary-600 text-white'
+                            : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
+                        }`}
+                      >
+                        {day.slice(0, 3)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <div className="flex gap-2">
                   <button onClick={handleAddEmployee} className="btn btn-primary flex-1">
                     Dodaj
@@ -196,7 +322,56 @@ export function Sidebar({
               </div>
             )}
             
-            {!isAdding && (
+            {/* Edit Employee Form */}
+            {editingId && editEmployee && (
+              <div className="p-4 bg-amber-50 rounded-lg space-y-3">
+                <p className="font-medium text-amber-800">Uredi radnika:</p>
+                <input
+                  type="text"
+                  value={editEmployee.name}
+                  onChange={(e) => setEditEmployee({ ...editEmployee, name: e.target.value })}
+                  className="input"
+                />
+                <select
+                  value={editEmployee.role}
+                  onChange={(e) => setEditEmployee({ ...editEmployee, role: e.target.value as Role })}
+                  className="input"
+                >
+                  {Object.values(Role).map(role => (
+                    <option key={role} value={role}>{role}</option>
+                  ))}
+                </select>
+                <div>
+                  <p className="text-sm text-slate-600 mb-2">Dostupnost:</p>
+                  <div className="flex flex-wrap gap-1">
+                    {ALL_DAYS.map(day => (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => toggleEditAvailability(day, editEmployee)}
+                        className={`text-xs px-2 py-1 rounded transition-colors ${
+                          editEmployee.availability?.includes(day)
+                            ? 'bg-amber-600 text-white'
+                            : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
+                        }`}
+                      >
+                        {day.slice(0, 3)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={handleUpdateEmployee} className="btn btn-primary flex-1">
+                    Sačuvaj
+                  </button>
+                  <button onClick={() => { setEditingId(null); setEditEmployee(null); }} className="btn btn-secondary">
+                    Otkaži
+                  </button>
+                </div>
+              </div>
+            )}
+            
+            {!isAdding && !editingId && (
               <button onClick={() => setIsAdding(true)} className="w-full btn btn-primary flex items-center justify-center gap-2">
                 <Plus size={18} /> Dodaj radnika
               </button>
@@ -204,6 +379,7 @@ export function Sidebar({
           </div>
         )}
 
+        {/* SHIFTS TAB */}
         {activeTab === 'shifts' && (
           <div className="p-4 space-y-3">
             {shifts.map(shift => (
@@ -235,7 +411,7 @@ export function Sidebar({
                   onChange={(e) => setNewShift({ ...newShift, day: e.target.value as DayOfWeek })}
                   className="input"
                 >
-                  {Object.values(DayOfWeek).map(day => (
+                  {ALL_DAYS.map(day => (
                     <option key={day} value={day}>{day}</option>
                   ))}
                 </select>
@@ -254,10 +430,13 @@ export function Sidebar({
                   />
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={handleAddShift} className="btn btn-primary flex-1">
+                  <button onClick={() => {
+                    onAddShift(newShift);
+                    setNewShift({ day: DayOfWeek.MONDAY, startTime: '08:00', endTime: '16:00', label: '' });
+                  }} className="btn btn-primary flex-1">
                     Dodaj
                   </button>
-                  <button onClick={() => setIsAdding(false)} className="btn btn-secondary">
+                  <button onClick={() => { setIsAdding(false); setNewShift({ day: DayOfWeek.MONDAY, startTime: '08:00', endTime: '16:00', label: '' }); }} className="btn btn-secondary">
                     Otkaži
                   </button>
                 </div>
@@ -272,6 +451,7 @@ export function Sidebar({
           </div>
         )}
 
+        {/* DUTIES TAB */}
         {activeTab === 'duties' && (
           <div className="p-4 space-y-3">
             {duties.map(duty => (
@@ -296,10 +476,14 @@ export function Sidebar({
                   className="input"
                 />
                 <div className="flex gap-2">
-                  <button onClick={handleAddDuty} className="btn btn-primary flex-1">
+                  <button onClick={() => {
+                    onAddDuty({ label: newDuty.label });
+                    setNewDuty({ label: '' });
+                    setIsAdding(false);
+                  }} className="btn btn-primary flex-1">
                     Dodaj
                   </button>
-                  <button onClick={() => setIsAdding(false)} className="btn btn-secondary">
+                  <button onClick={() => { setIsAdding(false); setNewDuty({ label: '' }); }} className="btn btn-secondary">
                     Otkaži
                   </button>
                 </div>
@@ -314,6 +498,72 @@ export function Sidebar({
           </div>
         )}
 
+        {/* TEMPLATES TAB */}
+        {activeTab === 'templates' && (
+          <div className="p-4 space-y-3">
+            {templates.length === 0 && (
+              <p className="text-sm text-slate-500 text-center py-4">Nema sačuvanih šablona</p>
+            )}
+            
+            {templates.map(template => (
+              <div key={template.id} className="p-3 bg-slate-50 rounded-lg">
+                <div className="flex items-center justify-between mb-1">
+                  <p className="font-medium text-slate-800">{template.name}</p>
+                  <button 
+                    onClick={() => handleDeleteTemplate(template.id)}
+                    className="p-1 text-red-500 hover:bg-red-50 rounded"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+                {template.description && (
+                  <p className="text-xs text-slate-500 mb-2">{template.description}</p>
+                )}
+                <p className="text-xs text-slate-400">{template.shifts.length} smjena</p>
+                <button 
+                  onClick={() => handleLoadTemplate(template)}
+                  className="mt-2 w-full btn btn-secondary text-sm flex items-center justify-center gap-2"
+                >
+                  <FolderOpen size={14} /> Učitaj
+                </button>
+              </div>
+            ))}
+            
+            {isAdding && (
+              <div className="p-4 bg-primary-50 rounded-lg space-y-3">
+                <input
+                  type="text"
+                  placeholder="Naziv šablona"
+                  value={newTemplate.name}
+                  onChange={(e) => setNewTemplate({ ...newTemplate, name: e.target.value })}
+                  className="input"
+                />
+                <textarea
+                  placeholder="Opis (opcionalno)"
+                  value={newTemplate.description}
+                  onChange={(e) => setNewTemplate({ ...newTemplate, description: e.target.value })}
+                  className="input min-h-[60px] resize-none"
+                />
+                <div className="flex gap-2">
+                  <button onClick={handleSaveTemplate} className="btn btn-primary flex-1">
+                    <Save size={16} /> Sačuvaj
+                  </button>
+                  <button onClick={() => { setIsAdding(false); setNewTemplate({ name: '', description: '' }); }} className="btn btn-secondary">
+                    Otkaži
+                  </button>
+                </div>
+              </div>
+            )}
+            
+            {!isAdding && (
+              <button onClick={() => setIsAdding(true)} className="w-full btn btn-primary flex items-center justify-center gap-2">
+                <Save size={18} /> Sačuvaj kao šablon
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* AI TAB */}
         {activeTab === 'ai' && (
           <div className="p-4">
             <h3 className="font-medium text-slate-800 mb-3">Pravila za AI</h3>
@@ -326,6 +576,7 @@ export function Sidebar({
           </div>
         )}
 
+        {/* SETTINGS TAB */}
         {activeTab === 'settings' && (
           <div className="p-4 space-y-4">
             <h3 className="font-medium text-slate-800">Podaci</h3>
@@ -335,8 +586,12 @@ export function Sidebar({
               <input type="file" accept=".json" onChange={handleFileImport} className="hidden" />
             </label>
             
-            <button onClick={handleFileExport} className="btn btn-secondary w-full flex items-center justify-center gap-2">
-              <Download size={18} /> Izvoz podataka
+            <button onClick={handleExportJSON} className="btn btn-secondary w-full flex items-center justify-center gap-2">
+              <Download size={18} /> Izvoz JSON
+            </button>
+            
+            <button onClick={handleExportCSV} className="btn btn-secondary w-full flex items-center justify-center gap-2">
+              <FileText size={18} /> Izvoz CSV
             </button>
             
             <button onClick={onResetAll} className="btn btn-danger w-full flex items-center justify-center gap-2">

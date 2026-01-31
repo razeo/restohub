@@ -22,6 +22,16 @@ export enum DayOfWeek {
   SUNDAY = 'Nedjelja',
 }
 
+export const ALL_DAYS = [
+  DayOfWeek.MONDAY,
+  DayOfWeek.TUESDAY,
+  DayOfWeek.WEDNESDAY,
+  DayOfWeek.THURSDAY,
+  DayOfWeek.FRIDAY,
+  DayOfWeek.SATURDAY,
+  DayOfWeek.SUNDAY,
+];
+
 // ===========================================
 // Entity Types
 // ===========================================
@@ -30,7 +40,7 @@ export interface Employee {
   id: string;
   name: string;
   role: Role;
-  availability?: DayOfWeek[]; // Days the employee is available to work
+  availability?: DayOfWeek[]; // Days the employee can work
   phone?: string;
   email?: string;
   notes?: string;
@@ -60,6 +70,18 @@ export interface Assignment {
   weekId: string;    // ISO week format or Monday's YYYY-MM-DD
   specialDuty?: string;
   notes?: string;
+}
+
+// ===========================================
+// Template Types
+// ===========================================
+
+export interface ShiftTemplate {
+  id: string;
+  name: string;
+  description?: string;
+  shifts: Shift[];
+  createdAt: number;
 }
 
 // ===========================================
@@ -118,6 +140,7 @@ export interface ExportData {
   shifts: Shift[];
   duties: Duty[];
   assignments: Assignment[];
+  templates?: ShiftTemplate[];
   aiRules?: string;
 }
 

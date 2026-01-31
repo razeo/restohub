@@ -299,7 +299,12 @@ function App() {
           shifts={shifts}
           aiRules={aiRules} 
           onAddEmployee={addEmployee} 
-          onRemoveEmployee={removeEmployee} 
+          onRemoveEmployee={removeEmployee}
+          onUpdateEmployee={(emp) => {
+            const updated = employees.map(e => e.id === emp.id ? emp : e);
+            setEmployees(updated);
+            setStorageItem(STORAGE_KEYS.EMPLOYEES, updated);
+          }} 
           onAddDuty={addDuty} 
           onRemoveDuty={removeDuty} 
           onAddShift={addShift}
