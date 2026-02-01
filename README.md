@@ -1,22 +1,75 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# 🍽️ RestoHub - Restaurant Management System
 
-# RestoHub
+**RestoHub** je sveobuhvatni sistem za upravljanje restoranom. Dizajniran za hotelske restorane i F&B sektor.
 
-Your restaurant's central hub for operations, scheduling, and team management.
+## ✨ Funkcije
 
-This contains everything you need to run your app locally.
+### 📅 Raspored
+- Kreiranje smjena za zaposlene
+- AI pomoć za automatsko raspoređivanje
+- Praćenje dostupnosti
 
-View your app in AI Studio: https://ai.studio/apps/drive/1nHZay0H2yJyUP2cWleK9qh7SKSl3PTnF
+### 🔄 Primopredaja Smjene
+- Finansije i dokumentacija
+- Inventar i tehničko stanje
+- Ključne poruke i checklist
 
-## Run Locally
+### 💰 Izvještaj Pazara
+- Gotovina, kartice, reprezentacija
+- Tip isplata
+- Kontrola kase (X-izvještaj)
 
-**Prerequisites:**  Node.js
+### ⚠️ Lista 86
+- Praćenje artikala van stanja
+- Preporučene zamjene
+- Komunikacija sa timom
 
+### 👥 Plan Odgovornosti
+- Dodela radnika po sektorima
+- Side-work zadaci
+- Shift leader praćenje
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+### 🛏️ Room Service
+- Praćenje narudžbi po sobama
+- Vrijeme dostave i čišćenja
+- Status praćenje
+
+### 🗑️ Lista Otpisa
+- Evidencija odbacenih artikala
+- Razlozi: oštećen, istekao, kvalitet
+
+### 🍽️ Dnevna Ponuda
+- Couvert, Juha, Glavno jelo, Desert
+- Potpisi kuhinje i sale
+
+### ⚠️ Alergeni
+- EU 1169/2011 kodovi
+- Sigurnosni protokol
+- Informacije o alergenima
+
+## 🚀 Početak
+
+```bash
+cd restohub
+npm install
+npm run dev
+```
+
+## 📱 Mobile Ready
+
+RestoHub je potpuno responsive - radi na desktopu, tabletu i mobitelu.
+
+## 🗄️ v2.0 (U pripremi)
+
+- Supabase cloud baza
+- Push notifikacije
+- Telegram integracija
+- Mobile app
+
+## 📄 Licenca
+
+MIT
+
+---
+
+**RestoHub** - Sve na jednom mjestu 🍽️

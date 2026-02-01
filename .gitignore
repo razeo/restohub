@@ -23,5 +23,13 @@ dist-ssr
 *.sln
 *.sw?
 
-# Environment files (contains secrets)
+# Environment files
+.env
 .env.local
+.env.*.local
+
+# Test coverage
+coverage
+
+# TypeScript
+*.tsbuildinfo

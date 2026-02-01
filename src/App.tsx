@@ -1,161 +1,325 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+// ===========================================
+// Main App Component
+// RestoHub - Restaurant Management System
+// ===========================================
+
+import { useState, useMemo, useEffect } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
-import { useLocalStorage } from './hooks/useLocalStorage';
-import { ErrorBoundary } from './components/ErrorBoundary';
-import Sidebar from './components/Sidebar';
-import ScheduleGrid from './components/ScheduleGrid';
-import ChatInterface from './components/ChatInterface';
-import { Employee, Shift, Assignment, ChatMessage, ScheduleState, Role, Duty } from './types';
-import { INITIAL_EMPLOYEES, INITIAL_SHIFTS, INITIAL_DUTIES, DEFAULT_AI_RULES } from './constants';
-import { processScheduleRequest } from './services/gemini';
-import { generateId, generateTimestampId, generateAiId, generateEmployeeId, generateDutyId, generateShiftId, generateAssignmentId } from './utils/id';
+import { Menu, Settings } from 'lucide-react';
+import { STORAGE_KEYS, runMigrations, getStorageItem, setStorageItem, clearAllStorage } from './utils/storage';
+import { generateEmployeeId, generateDutyId, generateShiftId, generateAssignmentId } from './utils/id';
 import { getMonday, formatDateToId, addWeeks } from './utils/date';
-import { Menu, X, Bot } from 'lucide-react';
+import { 
+  Employee, 
+  Shift, 
+  Assignment, 
+  Duty, 
+  ChatMessage, 
+  Role, 
+  DayOfWeek,
+  ScheduleState 
+} from './types';
+import { Sidebar } from './components/Sidebar';
+import { ScheduleGrid } from './components/Schedule';
+import { ChatInterface } from './components/Chat';
+import { DailyReport } from './components/DailyReport';
+import { ShiftHandover } from './components/ShiftHandover';
+import { OutOfStock } from './components/OutOfStock';
+import { ResponsibilityPlan } from './components/ResponsibilityPlan';
+import { RoomService } from './components/RoomService';
+import { WasteList } from './components/WasteList';
+import { DailyMenu } from './components/DailyMenu';
+import { AllergenGuide } from './components/AllergenGuide';
+import { processScheduleRequest, isAiConfigured } from './services/ai';
 
-const STORAGE_KEYS = {
-  EMPLOYEES: 'shiftmaster_permanent_employees',
-  DUTIES: 'shiftmaster_permanent_duties',
-  SHIFTS: 'shiftmaster_permanent_shifts',
-  ASSIGNMENTS: 'shiftmaster_permanent_assignments',
-  AI_RULES: 'shiftmaster_permanent_ai_rules',
-};
+type PageType = 'schedule' | 'handover' | 'report' | 'outofstock' | 'responsibility' | 'roomservice' | 'wastelist' | 'dailymenu' | 'allergens' | 'settings';
 
-const App: React.FC = () => {
-  const [employees, setEmployees] = useLocalStorage<Employee[]>(STORAGE_KEYS.EMPLOYEES, INITIAL_EMPLOYEES);
-  const [duties, setDuties] = useLocalStorage<Duty[]>(STORAGE_KEYS.DUTIES, INITIAL_DUTIES);
-  const [shifts, setShifts] = useLocalStorage<Shift[]>(STORAGE_KEYS.SHIFTS, INITIAL_SHIFTS);
-  const [assignments, setAssignments] = useLocalStorage<Assignment[]>(STORAGE_KEYS.ASSIGNMENTS, []);
+const INITIAL_EMPLOYEES: Employee[] = [
+  { id: 'emp-1', name: 'Marko Marković', role: Role.SERVER },
+  { id: 'emp-2', name: 'Jovan Jovanović', role: Role.CHEF },
+  { id: 'emp-3', name: 'Petar Petrović', role: Role.BARTENDER },
+];
 
-  const [aiRules, setAiRules] = useLocalStorage<string>(STORAGE_KEYS.AI_RULES, DEFAULT_AI_RULES);
+const INITIAL_DUTIES: Duty[] = [
+  { id: 'dt-1', label: 'Glavna smjena' },
+  { id: 'dt-2', label: 'Pomoćna smjena' },
+  { id: 'dt-3', label: 'Vikend' },
+];
 
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(getMonday(new Date()));
-  const currentWeekId = useMemo(() => formatDateToId(currentWeekStart), [currentWeekStart]);
-  const [isAiLoading, setIsAiLoading] = useState(false);
-  
-  // State for panels - default open on desktop, closed on mobile
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isChatOpen, setIsChatOpen] = useState(true);
-  
-  const abortControllerRef = useRef<AbortController | null>(null);
+const INITIAL_SHIFTS: Shift[] = [
+  { id: 'sh-1', day: DayOfWeek.MONDAY, startTime: '08:00', endTime: '16:00', label: 'Jutarnja' },
+  { id: 'sh-2', day: DayOfWeek.MONDAY, startTime: '16:00', endTime: '00:00', label: 'Večernja' },
+  { id: 'sh-3', day: DayOfWeek.TUESDAY, startTime: '08:00', endTime: '16:00', label: 'Jutarnja' },
+  { id: 'sh-4', day: DayOfWeek.TUESDAY, startTime: '16:00', endTime: '00:00', label: 'Večernja' },
+  { id: 'sh-5', day: DayOfWeek.WEDNESDAY, startTime: '08:00', endTime: '16:00', label: 'Jutarnja' },
+  { id: 'sh-6', day: DayOfWeek.WEDNESDAY, startTime: '16:00', endTime: '00:00', label: 'Večernja' },
+  { id: 'sh-7', day: DayOfWeek.THURSDAY, startTime: '08:00', endTime: '16:00', label: 'Jutarnja' },
+  { id: 'sh-8', day: DayOfWeek.THURSDAY, startTime: '16:00', endTime: '00:00', label: 'Večernja' },
+  { id: 'sh-9', day: DayOfWeek.FRIDAY, startTime: '08:00', endTime: '16:00', label: 'Jutarnja' },
+  { id: 'sh-10', day: DayOfWeek.FRIDAY, startTime: '16:00', endTime: '00:00', label: 'Večernja' },
+  { id: 'sh-11', day: DayOfWeek.SATURDAY, startTime: '08:00', endTime: '16:00', label: 'Jutarnja' },
+  { id: 'sh-12', day: DayOfWeek.SATURDAY, startTime: '16:00', endTime: '00:00', label: 'Večernja' },
+  { id: 'sh-13', day: DayOfWeek.SUNDAY, startTime: '08:00', endTime: '16:00', label: 'Jutarnja' },
+  { id: 'sh-14', day: DayOfWeek.SUNDAY, startTime: '16:00', endTime: '00:00', label: 'Večernja' },
+];
 
-  // Initial responsive check
+const DEFAULT_AI_RULES = `• Svaki radnik ima max 5 smjena sedmično
+• Poštuj dostupnost radnika
+• Barbier i Host ne mogu raditi noćne smjene
+• Vikendi su za iskusne radnike`;
+
+function App() {
   useEffect(() => {
-    if (window.innerWidth < 1024) {
-      setIsSidebarOpen(false);
-      setIsChatOpen(false);
-    }
+    runMigrations();
   }, []);
 
-  const weekAssignments = useMemo(() => assignments.filter(a => a.weekId === currentWeekId), [assignments, currentWeekId]);
+  const [currentPage, setCurrentPage] = useState<PageType>('schedule');
+  const [employees, setEmployees] = useState<Employee[]>(() => 
+    getStorageItem(STORAGE_KEYS.EMPLOYEES, INITIAL_EMPLOYEES)
+  );
+  const [duties, setDuties] = useState<Duty[]>(() => 
+    getStorageItem(STORAGE_KEYS.DUTIES, INITIAL_DUTIES)
+  );
+  const [shifts, setShifts] = useState<Shift[]>(() => 
+    getStorageItem(STORAGE_KEYS.SHIFTS, INITIAL_SHIFTS)
+  );
+  const [assignments, setAssignments] = useState<Assignment[]>(() => 
+    getStorageItem(STORAGE_KEYS.ASSIGNMENTS, [])
+  );
+  const [aiRules, setAiRules] = useState<string>(() => 
+    getStorageItem(STORAGE_KEYS.AI_RULES, DEFAULT_AI_RULES)
+  );
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(getMonday(new Date()));
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
-  const addEmployee = (newEmp: Omit<Employee, 'id'>) => setEmployees(prev => [...prev, { ...newEmp, id: generateEmployeeId() }]);
+  const currentWeekId = useMemo(() => formatDateToId(currentWeekStart), [currentWeekStart]);
+  const weekAssignments = useMemo(() => 
+    assignments.filter(a => a.weekId === currentWeekId),
+    [assignments, currentWeekId]
+  );
+
+  const addEmployee = (newEmp: Omit<Employee, 'id'>) => {
+    const updated = [...employees, { ...newEmp, id: generateEmployeeId() }];
+    setEmployees(updated);
+    setStorageItem(STORAGE_KEYS.EMPLOYEES, updated);
+    toast.success(`Dodat radnik: ${newEmp.name}`);
+  };
+  
   const removeEmployee = (id: string) => {
-    setEmployees(prev => prev.filter(e => e.id !== id));
-    setAssignments(prev => prev.filter(a => a.employeeId !== id));
+    const employee = employees.find(e => e.id === id);
+    const updated = employees.filter(e => e.id !== id);
+    setEmployees(updated);
+    setStorageItem(STORAGE_KEYS.EMPLOYEES, updated);
+    const filteredAssignments = assignments.filter(a => a.employeeId !== id);
+    setAssignments(filteredAssignments);
+    setStorageItem(STORAGE_KEYS.ASSIGNMENTS, filteredAssignments);
+    if (employee) toast.success(`Uklonjen radnik: ${employee.name}`);
   };
-  const updateEmployee = (updated: Employee) => setEmployees(prev => prev.map(e => e.id === updated.id ? updated : e));
 
-  const addDuty = (newDuty: Omit<Duty, 'id'>) => setDuties(prev => [...prev, { ...newDuty, id: generateDutyId() }]);
-  const removeDuty = (id: string) => setDuties(prev => prev.filter(d => d.id !== id));
-  const updateDuty = (updated: Duty) => setDuties(prev => prev.map(d => d.id === updated.id ? updated : d));
+  const updateEmployee = (updatedEmployee: Employee) => {
+    const updated = employees.map(e => e.id === updatedEmployee.id ? updatedEmployee : e);
+    setEmployees(updated);
+    setStorageItem(STORAGE_KEYS.EMPLOYEES, updated);
+    toast.success('Radnik ažuriran');
+  };
 
-  const addShift = (newShift: Omit<Shift, 'id'>) => setShifts(prev => [...prev, { ...newShift, id: generateShiftId() }]);
+  const addDuty = (newDuty: Omit<Duty, 'id'>) => {
+    const updated = [...duties, { ...newDuty, id: generateDutyId() }];
+    setDuties(updated);
+    setStorageItem(STORAGE_KEYS.DUTIES, updated);
+    toast.success(`Dodata dužnost: ${newDuty.label}`);
+  };
+  
+  const removeDuty = (id: string) => {
+    const duty = duties.find(d => d.id === id);
+    const updated = duties.filter(d => d.id !== id);
+    setDuties(updated);
+    setStorageItem(STORAGE_KEYS.DUTIES, updated);
+    if (duty) toast.success(`Uklonjena dužnost: ${duty.label}`);
+  };
+
+  const addShift = (newShift: Omit<Shift, 'id'>) => {
+    const updated = [...shifts, { ...newShift, id: generateShiftId() }];
+    setShifts(updated);
+    setStorageItem(STORAGE_KEYS.SHIFTS, updated);
+    toast.success(`Dodata smjena: ${newShift.label}`);
+  };
+  
   const removeShift = (id: string) => {
-    setShifts(prev => prev.filter(s => s.id !== id));
-    setAssignments(prev => prev.filter(a => a.shiftId !== id));
+    const shift = shifts.find(s => s.id === id);
+    const updated = shifts.filter(s => s.id !== id);
+    setShifts(updated);
+    setStorageItem(STORAGE_KEYS.SHIFTS, updated);
+    const filteredAssignments = assignments.filter(a => a.shiftId !== id);
+    setAssignments(filteredAssignments);
+    setStorageItem(STORAGE_KEYS.ASSIGNMENTS, filteredAssignments);
+    if (shift) toast.success(`Uklonjena smjena: ${shift.label}`);
   };
-  const updateShift = (updated: Shift) => setShifts(prev => prev.map(s => s.id === updated.id ? updated : s));
 
-  const removeAssignment = (id: string) => setAssignments(prev => prev.filter(a => a.id !== id));
-  const updateAssignment = (id: string, duty: string) => setAssignments(prev => prev.map(a => id === a.id ? { ...a, specialDuty: duty } : a));
+  const removeAssignment = (id: string) => {
+    const filtered = assignments.filter(a => a.id !== id);
+    setAssignments(filtered);
+    setStorageItem(STORAGE_KEYS.ASSIGNMENTS, filtered);
+  };
+
   const manualAssign = (shiftId: string, employeeId: string) => {
-    if (assignments.some(a => a.shiftId === shiftId && a.employeeId === employeeId && a.weekId === currentWeekId)) return;
-    setAssignments(prev => [...prev, { id: generateAssignmentId(), shiftId, employeeId, weekId: currentWeekId }]);
+    const isDuplicate = assignments.some(a => 
+      a.shiftId === shiftId && 
+      a.employeeId === employeeId && 
+      a.weekId === currentWeekId
+    );
+    
+    if (isDuplicate) {
+      toast.error('Radnik je već dodijeljen ovoj smjeni');
+      return;
+    }
+    
+    const newAssignment: Assignment = { 
+      id: generateAssignmentId(), 
+      shiftId, 
+      employeeId, 
+      weekId: currentWeekId 
+    };
+    
+    const updated = [...assignments, newAssignment];
+    setAssignments(updated);
+    setStorageItem(STORAGE_KEYS.ASSIGNMENTS, updated);
+    
+    const employee = employees.find(e => e.id === employeeId);
+    toast.success(`Dodijeljen: ${employee?.name || '?'}`);
+  };
+
+  const navigateWeek = (direction: number) => 
+    setCurrentWeekStart(addWeeks(currentWeekStart, direction));
+
+  const handleAiMessage = async (text: string) => {
+    if (!isAiConfigured()) {
+      toast.error('API ključ nije podešen. Dodajte VITE_GROQ_API_KEY u .env.local');
+      return;
+    }
+
+    const userMsg: ChatMessage = { 
+      id: Date.now().toString(), 
+      role: 'user', 
+      text, 
+      timestamp: Date.now() 
+    };
+    setChatMessages(prev => [...prev, userMsg]);
+    setIsAiLoading(true);
+    setAiError(null);
+
+    try {
+      const state: ScheduleState = {
+        employees,
+        shifts,
+        assignments,
+        duties,
+        currentWeekId,
+        aiRules,
+      };
+
+      const response = await processScheduleRequest(text, state);
+      const modelMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'model',
+        text: response.message,
+        timestamp: Date.now(),
+        status: 'pending',
+        pendingAssignments: response.assignments,
+        pendingEmployees: response.newEmployees,
+      };
+      setChatMessages(prev => [...prev, modelMsg]);
+      toast.success('AI je generisao prijedlog');
+    } catch (error: any) {
+      setAiError(error.message || 'Greška');
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
+  const handleApplyChanges = (messageId: string) => {
+    const message = chatMessages.find(m => m.id === messageId);
+    if (!message?.pendingAssignments) return;
+
+    const newAssignments: Assignment[] = message.pendingAssignments.map(a => ({
+      ...a,
+      id: generateAssignmentId(),
+      weekId: currentWeekId,
+    }));
+
+    const updated = [...assignments, ...newAssignments];
+    setAssignments(updated);
+    setStorageItem(STORAGE_KEYS.ASSIGNMENTS, updated);
+
+    setChatMessages(prev => prev.map(m => 
+      m.id === messageId ? { ...m, status: 'applied' as const } : m
+    ));
+    toast.success('Izmjene primijenjene');
+  };
+
+  const handleDiscardChanges = (messageId: string) => {
+    setChatMessages(prev => prev.map(m => 
+      m.id === messageId ? { ...m, status: 'discarded' as const } : m
+    ));
+    toast.success('Izmjene odbacene');
   };
 
   const handleImportData = (data: any) => {
     try {
-      if (data.employees) setEmployees(data.employees);
-      if (data.shifts) setShifts(data.shifts);
-      if (data.duties) setDuties(data.duties);
-      if (data.aiRules !== undefined) setAiRules(data.aiRules);
-      if (data.assignments) setAssignments(data.assignments);
-      toast.success("Podaci su uspješno učitani!");
+      if (data.employees) {
+        setEmployees(data.employees);
+        setStorageItem(STORAGE_KEYS.EMPLOYEES, data.employees);
+      }
+      if (data.shifts) {
+        setShifts(data.shifts);
+        setStorageItem(STORAGE_KEYS.SHIFTS, data.shifts);
+      }
+      if (data.duties) {
+        setDuties(data.duties);
+        setStorageItem(STORAGE_KEYS.DUTIES, data.duties);
+      }
+      if (data.aiRules !== undefined) {
+        setAiRules(data.aiRules);
+        setStorageItem(STORAGE_KEYS.AI_RULES, data.aiRules);
+      }
+      if (data.assignments) {
+        setAssignments(data.assignments);
+        setStorageItem(STORAGE_KEYS.ASSIGNMENTS, data.assignments);
+      }
+      toast.success('Podaci uvezeni!');
     } catch (e) {
-      toast.error("Greška pri učitavanju fajla.");
+      toast.error('Greška pri uvozu podataka');
     }
   };
 
-  const resetToDefaults = () => {
-    if (window.confirm("Ovo će obrisati SVE vaše unose i vratiti praznu aplikaciju. Da li ste sigurni?")) {
-      localStorage.clear();
+  const handleResetAll = () => {
+    if (window.confirm('Da li ste sigurni da želite resetovati sve podatke?')) {
+      clearAllStorage();
       setEmployees(INITIAL_EMPLOYEES);
       setShifts(INITIAL_SHIFTS);
       setDuties(INITIAL_DUTIES);
       setAiRules(DEFAULT_AI_RULES);
       setAssignments([]);
       setChatMessages([]);
-      // toast.success("Aplikacija je resetovana!");
-      window.location.reload();
+      toast.success('Svi podaci su resetovani');
     }
   };
 
-  const navigateWeek = (direction: number) => {
-    setCurrentWeekStart(addWeeks(currentWeekStart, direction));
-  };
-
-  const handleAiMessage = async (text: string) => {
-    const userMsg: ChatMessage = { id: generateTimestampId('msg'), role: 'user', text, timestamp: Date.now() };
-    setChatMessages(prev => [...prev, userMsg]);
-    setIsAiLoading(true);
-    abortControllerRef.current = new AbortController();
-    try {
-      const result = await processScheduleRequest(text, { employees, duties, shifts, assignments: weekAssignments, currentWeekId, aiRules }, abortControllerRef.current.signal);
-      setChatMessages(prev => [...prev, {
-        id: generateTimestampId('msg'),
-        role: 'model',
-        text: result.message + "\n\nDa li želite da primijenite ove izmjene u raspored?",
-        timestamp: Date.now(),
-        pendingAssignments: result.assignments,
-        pendingEmployees: result.newEmployees,
-        status: 'pending'
-      }]);
-    } catch (e: any) {
-      if (e.message !== "AbortError") {
-        setChatMessages(prev => [...prev, { id: generateTimestampId('msg'), role: 'model', text: "Došlo je do greške u komunikaciji sa AI asistentom.", timestamp: Date.now() }]);
-      }
-    } finally {
-      setIsAiLoading(false);
-      abortControllerRef.current = null;
-    }
-  };
-
-  const applyProposedChanges = (messageId: string) => {
-    const msg = chatMessages.find(m => m.id === messageId);
-    if (!msg || !msg.pendingAssignments) return;
-    if (msg.pendingEmployees && msg.pendingEmployees.length > 0) {
-      const added: Employee[] = msg.pendingEmployees
-        .filter(ne => !employees.some(e => e.name.toLowerCase() === ne.name.toLowerCase()))
-        .map(ne => ({ id: generateAiId('emp'), name: ne.name, role: ne.role as Role || Role.SERVER }));
-      if (added.length > 0) setEmployees(prev => [...prev, ...added]);
-    }
-    const otherWeeksAssignments = assignments.filter(a => a.weekId !== currentWeekId);
-    const currentWeekOldAssignments = assignments.filter(a => a.weekId === currentWeekId);
-    const newWeekAssignments: Assignment[] = msg.pendingAssignments.map((a, i) => {
-      const existing = currentWeekOldAssignments.find(old => old.shiftId === a.shiftId && old.employeeId === a.employeeId);
-      return { id: existing?.id || generateAiId('asg'), shiftId: a.shiftId, employeeId: a.employeeId, specialDuty: a.specialDuty || existing?.specialDuty, weekId: currentWeekId };
-    });
-    setAssignments([...otherWeeksAssignments, ...newWeekAssignments]);
-    setChatMessages(prev => prev.map(m => m.id === messageId ? { ...m, status: 'applied' } : m));
+  const handlePageChange = (page: string) => {
+    setCurrentPage(page as PageType);
+    setIsSidebarOpen(false);
   };
 
   return (
-    <div className="flex h-screen bg-slate-100 overflow-hidden font-sans selection:bg-indigo-100">
+    <div className="flex h-screen bg-slate-100 overflow-hidden font-sans">
+      <Toaster position="top-right" />
       
-      {/* Sidebar Wrapper */}
       <div 
-        className={`fixed lg:static inset-y-0 left-0 z-50 transition-all duration-300 ease-in-out transform bg-white ${
+        className={`fixed lg:static inset-y-0 left-0 z-50 transition-all duration-300 ease-in-out bg-white ${
           isSidebarOpen 
             ? 'translate-x-0 lg:w-80 border-r border-slate-200' 
             : '-translate-x-full lg:w-0 lg:overflow-hidden lg:border-none'
@@ -167,53 +331,93 @@ const App: React.FC = () => {
           shifts={shifts}
           assignments={assignments}
           aiRules={aiRules} 
+          currentPage={currentPage}
+          onPageChange={handlePageChange}
           onAddEmployee={addEmployee} 
           onRemoveEmployee={removeEmployee} 
-          onUpdateEmployee={updateEmployee} 
+          onUpdateEmployee={updateEmployee}
           onAddDuty={addDuty} 
           onRemoveDuty={removeDuty} 
-          onUpdateDuty={updateDuty} 
           onAddShift={addShift}
           onRemoveShift={removeShift}
-          onUpdateShift={updateShift}
-          onUpdateAiRules={setAiRules} 
-          onResetAll={resetToDefaults}
+          onUpdateAiRules={(rules: string) => {
+            setAiRules(rules);
+            setStorageItem(STORAGE_KEYS.AI_RULES, rules);
+          }} 
+          onResetAll={handleResetAll}
           onImportData={handleImportData}
           onClose={() => setIsSidebarOpen(false)}
         />
       </div>
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-        <ScheduleGrid 
-          shifts={shifts} 
-          assignments={weekAssignments} 
-          employees={employees} 
-          duties={duties} 
-          currentWeekStart={currentWeekStart} 
-          onRemoveAssignment={removeAssignment} 
-          onManualAssign={manualAssign} 
-          onUpdateAssignment={updateAssignment} 
-          onNavigateWeek={navigateWeek} 
-          isSidebarOpen={isSidebarOpen}
-          onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-          isChatOpen={isChatOpen}
-          onToggleChat={() => setIsChatOpen(!isChatOpen)}
-        />
+        {currentPage === 'schedule' && (
+          <ScheduleGrid 
+            shifts={shifts} 
+            assignments={weekAssignments} 
+            employees={employees} 
+            duties={duties} 
+            currentWeekStart={currentWeekStart} 
+            onRemoveAssignment={removeAssignment} 
+            onManualAssign={manualAssign} 
+            onNavigateWeek={navigateWeek} 
+            onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+            onToggleChat={() => setIsChatOpen(!isChatOpen)}
+          />
+        )}
+
+        {currentPage === 'handover' && (
+          <ShiftHandover />
+        )}
+
+        {currentPage === 'report' && (
+          <DailyReport />
+        )}
+
+        {currentPage === 'outofstock' && (
+          <OutOfStock />
+        )}
+
+        {currentPage === 'responsibility' && (
+          <ResponsibilityPlan />
+        )}
+
+        {currentPage === 'roomservice' && (
+          <RoomService />
+        )}
+
+        {currentPage === 'wastelist' && (
+          <WasteList />
+        )}
+
+        {currentPage === 'dailymenu' && (
+          <DailyMenu />
+        )}
+
+        {currentPage === 'allergens' && (
+          <AllergenGuide />
+        )}
+
+        {currentPage === 'settings' && (
+          <div className="flex-1 flex items-center justify-center bg-slate-100">
+            <div className="text-center">
+              <Settings size={64} className="mx-auto text-slate-300 mb-4" />
+              <h2 className="text-xl font-bold text-slate-700">Postavke</h2>
+              <p className="text-slate-500">Dodatne postavke uskoro</p>
+            </div>
+          </div>
+        )}
         
-        {/* Mobile FABs */}
         {!isSidebarOpen && (
-           <button className="lg:hidden absolute top-6 left-6 z-[60] p-3 bg-white text-slate-800 rounded-xl shadow-xl border border-slate-100" onClick={() => setIsSidebarOpen(true)}>
+           <button 
+            className="lg:hidden absolute top-6 left-6 z-[60] p-3 bg-white text-slate-800 rounded-xl shadow-xl border border-slate-100"
+            onClick={() => setIsSidebarOpen(true)}
+           >
             <Menu size={20} />
            </button>
         )}
-        {!isChatOpen && (
-          <button className="lg:hidden fixed bottom-6 right-6 z-50 p-5 bg-indigo-600 text-white rounded-2xl shadow-2xl transition-transform active:scale-95" onClick={() => setIsChatOpen(true)}>
-            <Bot size={24} />
-          </button>
-        )}
       </div>
 
-      {/* Chat Interface Wrapper */}
       <div 
         className={`fixed lg:static inset-y-0 right-0 z-50 transition-all duration-300 ease-in-out bg-white ${
           isChatOpen 
@@ -224,21 +428,24 @@ const App: React.FC = () => {
         <ChatInterface 
           messages={chatMessages} 
           onSendMessage={handleAiMessage} 
-          onCancelAi={() => abortControllerRef.current?.abort()} 
-          onApplyChanges={applyProposedChanges} 
-          onDiscardChanges={(mid) => setChatMessages(prev => prev.map(m => m.id === mid ? { ...m, status: 'discarded', text: "Prijedlog je odbačen." } : m))} 
+          onCancelAi={() => setIsAiLoading(false)}
+          onApplyChanges={handleApplyChanges} 
+          onDiscardChanges={handleDiscardChanges} 
           isLoading={isAiLoading} 
           onClose={() => setIsChatOpen(false)}
+          error={aiError}
+          onClearError={() => setAiError(null)}
         />
       </div>
 
-      {/* Mobile Overlay */}
-      {(isSidebarOpen || isChatOpen) && <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 lg:hidden" onClick={() => { setIsSidebarOpen(false); setIsChatOpen(false); }} />}
-      
-      {/* Toast Notifications */}
-      <Toaster position="top-right" />
+      {(isSidebarOpen || isChatOpen) && (
+        <div 
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 lg:hidden"
+          onClick={() => { setIsSidebarOpen(false); setIsChatOpen(false); }}
+        />
+      )}
     </div>
   );
-};
+}
 
 export default App;

@@ -1,0 +1,1 @@
+export { ResponsibilityPlan } from './ResponsibilityPlan';

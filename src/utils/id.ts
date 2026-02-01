@@ -1,7 +1,7 @@
-/**
- * ID Generation Utilities
- * Consistent ID generation for RestoHub entities
- */
+// ===========================================
+// ID Generation Utilities
+// Consistent ID generation for the application
+// ===========================================
 
 /**
  * Generate a unique ID with timestamp and random suffix
@@ -38,7 +38,7 @@ export function generateShortId(prefix: string): string {
  * Format: prefix-ai-timestamp-random
  * Example: emp-ai-1738252800-abc12
  */
-export function generateAiId(prefix: string): string {
+export function generateAiId(_prefix: string): string {
   const timestamp = Date.now();
   const random = Math.random().toString(36).substring(2, 5);
   return `asg-ai-${timestamp}-${random}`;
@@ -53,6 +53,7 @@ export const ID_PREFIXES = {
   SHIFT: 'sh',
   ASSIGNMENT: 'asg',
   MESSAGE: 'msg',
+  NOTIFICATION: 'notif',
 } as const;
 
 export type IDPrefix = typeof ID_PREFIXES[keyof typeof ID_PREFIXES];

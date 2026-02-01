@@ -1,9 +1,9 @@
-import { DayOfWeek } from '../types';
+// ===========================================
+// Date Utilities for Shift Scheduler
+// Week calculations, formatting, and date helpers
+// ===========================================
 
-/**
- * Date Utilities for RestoHub
- * Week calculations, formatting, and date helpers
- */
+import { DayOfWeek } from '../types';
 
 // Week ID format constant
 export const WEEK_ID_FORMAT = 'YYYY-MM-DD';
@@ -105,7 +105,6 @@ export function dayOfWeekToDate(weekStart: Date, day: DayOfWeek): Date {
  * Format time for display (HH:MM)
  */
 export function formatTime(time: string): string {
-  // Assuming time is in HH:MM format
   return time;
 }
 
@@ -127,4 +126,15 @@ export function isInCurrentWeek(date: Date, weekStart: Date): boolean {
   const weekEnd = new Date(weekStart);
   weekEnd.setDate(weekStart.getDate() + 6);
   return date >= weekStart && date <= weekEnd;
+}
+
+/**
+ * Get week number (ISO week)
+ */
+export function getWeekNumber(date: Date): number {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
 }
