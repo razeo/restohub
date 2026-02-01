@@ -1,6 +1,6 @@
 // ===========================================
 // Main App Component
-// Shift Scheduler - Restaurant Management System
+// RestoHub - Restaurant Management System
 // ===========================================
 
 import { useState, useMemo, useEffect } from 'react';
