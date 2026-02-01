@@ -26,9 +26,10 @@ import { DailyReport } from './components/DailyReport';
 import { ShiftHandover } from './components/ShiftHandover';
 import { OutOfStock } from './components/OutOfStock';
 import { ResponsibilityPlan } from './components/ResponsibilityPlan';
+import { RoomService } from './components/RoomService';
 import { processScheduleRequest, isAiConfigured } from './services/ai';
 
-type PageType = 'schedule' | 'handover' | 'report' | 'outofstock' | 'responsibility' | 'settings';
+type PageType = 'schedule' | 'handover' | 'report' | 'outofstock' | 'responsibility' | 'roomservice' | 'settings';
 
 const INITIAL_EMPLOYEES: Employee[] = [
   { id: 'emp-1', name: 'Marko Marković', role: Role.SERVER },
@@ -376,6 +377,10 @@ function App() {
 
         {currentPage === 'responsibility' && (
           <ResponsibilityPlan />
+        )}
+
+        {currentPage === 'roomservice' && (
+          <RoomService />
         )}
 
         {currentPage === 'settings' && (
