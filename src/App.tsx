@@ -226,16 +226,15 @@ function App() {
     setStorageItem(STORAGE_KEYS.ASSIGNMENTS, filtered);
   };
 
-  const manualAssign = (shiftId: string, employeeId: string) => {
+  const manualAssign = (shiftId: string, employeeId: string, alreadyAddedIds: string[] = []) => {
     const isDuplicate = assignments.some(a => 
       a.shiftId === shiftId && 
       a.employeeId === employeeId && 
       a.weekId === currentWeekId
-    );
+    ) || alreadyAddedIds.includes(employeeId);
     
     if (isDuplicate) {
-      toast.error('Radnik je već dodijeljen ovoj smjeni');
-      return;
+      return false; // Silent fail for batch operations
     }
     
     const newAssignment: Assignment = { 
@@ -245,12 +244,13 @@ function App() {
       weekId: currentWeekId 
     };
     
-    const updated = [...assignments, newAssignment];
-    setAssignments(updated);
-    setStorageItem(STORAGE_KEYS.ASSIGNMENTS, updated);
+    setAssignments(prev => {
+      const updated = [...prev, newAssignment];
+      setStorageItem(STORAGE_KEYS.ASSIGNMENTS, updated);
+      return updated;
+    });
     
-    const employee = employees.find(e => e.id === employeeId);
-    toast.success(`Dodijeljen: ${employee?.name || '?'}`);
+    return true;
   };
 
   const navigateWeek = (direction: number) => 

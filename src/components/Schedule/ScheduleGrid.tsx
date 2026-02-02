@@ -10,7 +10,7 @@ export interface ScheduleGridProps {
   duties: Duty[];
   currentWeekStart: Date;
   onRemoveAssignment: (id: string) => void;
-  onManualAssign: (shiftId: string, employeeId: string) => void;
+  onManualAssign: (shiftId: string, employeeId: string, alreadyAddedIds?: string[]) => boolean;
   onNavigateWeek: (direction: number) => void;
   onToggleSidebar: () => void;
   onToggleChat: () => void;
@@ -96,11 +96,23 @@ export function ScheduleGrid({
 
   const handleAddSelectedEmployees = () => {
     if (!selectedShiftId) return;
+    
+    const alreadyAddedInThisBatch: string[] = [];
+    
     selectedEmployeeIds.forEach(id => {
-      onManualAssign(selectedShiftId, id);
+      const added = onManualAssign(selectedShiftId, id, alreadyAddedInThisBatch);
+      if (added) {
+        alreadyAddedInThisBatch.push(id);
+      }
     });
+    
     setSelectedEmployeeIds(new Set());
     handleCloseAssignModal();
+    
+    // Show success message
+    if (alreadyAddedInThisBatch.length > 0) {
+      console.log(`Dodijeljeno ${alreadyAddedInThisBatch.length} radnika`);
+    }
   };
 
   const handleSelectAllUnassigned = () => {
