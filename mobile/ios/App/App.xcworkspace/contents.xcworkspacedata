@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workspace>
+    <scheme name="App" shouldAutocreate="YES">
+        <buildAction parallelizeBuildables="YES" buildImplicitDependencies="YES">
+            <buildActionEntries>
+                <buildActionEntry buildForTesting="YES" buildForRunning="YES" buildForProfiling="YES" buildForArchiving="YES" buildForAnalyzing="YES">
+                    <buildableReference buildableIdentifier="product" buildableName="App" blueprintName="App" referencedBlueprint="App">
+                    </buildableReference>
+                </buildActionEntry>
+            </buildActionEntries>
+        </buildAction>
+        <testAction>
+            <buildActionEntries>
+                <buildActionEntry buildForTesting="YES" buildForRunning="YES" buildForProfiling="YES" buildForArchiving="YES" buildForAnalyzing="YES">
+                    <buildableReference buildableIdentifier="product" buildableName="App" blueprintName="App" referencedBlueprint="App">
+                    </buildableReference>
+                </buildActionEntry>
+            </buildActionEntries>
+        </testAction>
+        <profileAction>
+            <buildActionEntries>
+                <buildActionEntry buildForTesting="YES" buildForRunning="YES" buildForProfiling="YES" buildForArchiving="YES" buildForAnalyzing="YES">
+                    <buildableReference buildableIdentifier="product" buildableName="App" blueprintName="App" referencedBlueprint="App">
+                    </buildableReference>
+                </buildActionEntry>
+            </buildActionEntries>
+        </profileAction>
+        <analyzeAction>
+            <buildableReference buildableIdentifier="product" buildableName="App" blueprintName="App" referencedBlueprint="App">
+            </buildableReference>
+        </analyzeAction>
+        <archiveAction>
+            <buildableReference buildableIdentifier="product" buildableName="App" blueprintName="App" referencedBlueprint="App">
+            </buildableReference>
+        </archiveAction>
+    </scheme>
+</workspace>

@@ -3,7 +3,7 @@
 // Handles communication with Groq API (free, fast)
 // ===========================================
 
-import { ScheduleState, AIResponse } from '../types';
+import { ScheduleState, AIResponse, ALL_DAYS } from '../types/index';
 
 const API_BASE = 'https://api.groq.com/openai/v1/chat/completions';
 
@@ -142,5 +142,4 @@ export const getAiStatus = (): { configured: boolean; message: string } => {
 };
 
 // Export ALL_DAYS for use in prompts
-import { DayOfWeek, ALL_DAYS } from '../types';
-export { DayOfWeek, ALL_DAYS };
+export { DayOfWeek, ALL_DAYS } from '../types/index';

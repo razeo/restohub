@@ -5,7 +5,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
-import { Menu, Settings } from 'lucide-react';
+import { Menu, Settings, Bell } from 'lucide-react';
 import { STORAGE_KEYS, runMigrations, getStorageItem, setStorageItem, clearAllStorage } from './utils/storage';
 import { generateEmployeeId, generateDutyId, generateShiftId, generateAssignmentId } from './utils/id';
 import { getMonday, formatDateToId, addWeeks } from './utils/date';
@@ -31,6 +31,8 @@ import { WasteList } from './components/WasteList';
 import { DailyMenu } from './components/DailyMenu';
 import { AllergenGuide } from './components/AllergenGuide';
 import { processScheduleRequest, isAiConfigured } from './services/ai';
+import { useNotifications } from './hooks/useNotifications';
+import { isFcmConfigured, isTelegramConfigured } from './services/notifications';
 
 type PageType = 'schedule' | 'handover' | 'report' | 'outofstock' | 'responsibility' | 'roomservice' | 'wastelist' | 'dailymenu' | 'allergens' | 'settings';
 
@@ -69,6 +71,64 @@ const DEFAULT_AI_RULES = `• Svaki radnik ima max 5 smjena sedmično
 • Vikendi su za iskusne radnike`;
 
 function App() {
+  // Initialize notifications
+  const {
+    requestPermission,
+    registerToken,
+    hasPermission,
+    isFcmReady,
+    isTelegramReady,
+    fcmToken,
+    getUserId,
+  } = useNotifications();
+
+  // Initialize notification services on app load
+  useEffect(() => {
+    const initializeNotifications = async () => {
+      // Check if notifications are configured
+      if (!isFcmConfigured() && !isTelegramConfigured()) {
+        console.log('Notification services not configured');
+        return;
+      }
+
+      // Request permission and register token
+      const permissionGranted = await requestPermission();
+      if (permissionGranted && fcmToken) {
+        await registerToken();
+      }
+    };
+
+    // Only initialize on first load (not on every render)
+    const initialized = sessionStorage.getItem('notifications_initialized');
+    if (!initialized) {
+      initializeNotifications();
+      sessionStorage.setItem('notifications_initialized', 'true');
+    }
+  }, []);
+
+  // Show toast for incoming notifications (foreground)
+  useEffect(() => {
+    // This would be connected to Firebase onMessage handler
+    // For now, we'll simulate notification toasts
+    const handleNotification = (event: CustomEvent) => {
+      const { title, body } = event.detail;
+      toast.custom((t) => (
+        <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} bg-white shadow-lg rounded-lg p-4 max-w-sm`}>
+          <div className="flex items-center gap-3">
+            <Bell className="text-blue-500" size={20} />
+            <div>
+              <p className="font-medium text-slate-800">{title}</p>
+              <p className="text-sm text-slate-600">{body}</p>
+            </div>
+          </div>
+        </div>
+      ), { duration: 5000 });
+    };
+
+    window.addEventListener('restohub:notification', handleNotification as EventListener);
+    return () => window.removeEventListener('restohub:notification', handleNotification as EventListener);
+  }, []);
+
   useEffect(() => {
     runMigrations();
   }, []);
@@ -399,11 +459,74 @@ function App() {
         )}
 
         {currentPage === 'settings' && (
-          <div className="flex-1 flex items-center justify-center bg-slate-100">
-            <div className="text-center">
-              <Settings size={64} className="mx-auto text-slate-300 mb-4" />
-              <h2 className="text-xl font-bold text-slate-700">Postavke</h2>
-              <p className="text-slate-500">Dodatne postavke uskoro</p>
+          <div className="flex-1 flex items-center justify-center bg-slate-100 p-8">
+            <div className="bg-white rounded-2xl shadow-xl p-8 max-w-2xl w-full">
+              <div className="flex items-center gap-4 mb-8">
+                <Settings size={32} className="text-slate-400" />
+                <div>
+                  <h2 className="text-xl font-bold text-slate-700">Postavke</h2>
+                  <p className="text-slate-500">Upravljanje postavkama aplikacije</p>
+                </div>
+              </div>
+
+              {/* Notification Status */}
+              <div className="mb-8">
+                <h3 className="text-lg font-semibold text-slate-700 mb-4">Obavijesti</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* FCM Status */}
+                  <div className={`p-4 rounded-xl border-2 ${
+                    hasPermission && isFcmReady 
+                      ? 'border-green-200 bg-green-50' 
+                      : 'border-slate-200 bg-slate-50'
+                  }`}>
+                    <div className="flex items-center gap-3 mb-2">
+                      <Bell size={20} className={hasPermission && isFcmReady ? 'text-green-600' : 'text-slate-400'} />
+                      <span className="font-medium text-slate-700">Push obavijesti</span>
+                    </div>
+                    <p className="text-sm text-slate-500">
+                      {hasPermission 
+                        ? isFcmReady 
+                          ? '✅ Aktivne' 
+                          : '⚠️ Konfiguracija nedostaje'
+                        : '❌ Onemogućeno'}
+                    </p>
+                    {!hasPermission && (
+                      <button
+                        onClick={requestPermission}
+                        className="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors"
+                      >
+                        Omogući obavijesti
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Telegram Status */}
+                  <div className={`p-4 rounded-xl border-2 ${
+                    isTelegramReady 
+                      ? 'border-green-200 bg-green-50' 
+                      : 'border-slate-200 bg-slate-50'
+                  }`}>
+                    <div className="flex items-center gap-3 mb-2">
+                      <svg viewBox="0 0 24 24" width={20} height={20} fill={isTelegramReady ? '#22c55e' : '#94a3b8'} className="mt-1">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.48-.94-2.4-1.54-1.06-.7-.37-1.09.23-1.71.14-.15 2.54-2.32 2.59-2.52.01-.03.01-.13-.05-.18-.06-.05-.16-.02-.23-.01-.09.02-1.4 1.02-3.8 3.07-.2.17-.38.26-.54.26-.31 0-.48-.22-.54-.52-.06-.33-.19-1.05-.23-1.33-.02-.15-.06-.3-.15-.43-.09-.13-.22-.21-.36-.21-.17 0-.34.09-.49.21-.21.18-.86.76-1.25 1.13-.11.1-.2.19-.29.3-.11.14-.21.27-.18.56.03.37.4.77.78 1.05 2.22 1.63 3.79 2.65 4.49 3.14.88.62 1.58 1.18 1.87 1.42.53.44.91.82 1.08 1.35.11.35.09.79-.05 1.19-.19.53-.63 1.08-1.21 1.24-.39.11-.77.08-1.15-.1-.45-.22-.86-.52-1.26-.86-.24-.21-.48-.43-.73-.63-.11-.09-.23-.17-.35-.25.25-.09.48-.16.7-.24.56-.2 1.04-.33 1.44-.56.76-.44 1.43-1.05 1.92-1.79.51-.76.8-1.65.84-2.6.01-.18.01-.36 0-.54.05-1.03-.05-2.07-.28-3.1z"/>
+                      </svg>
+                      <span className="font-medium text-slate-700">Telegram</span>
+                    </div>
+                    <p className="text-sm text-slate-500">
+                      {isTelegramReady 
+                        ? '✅ Povezan' 
+                        : '⚠️ Konfiguracija nedostaje'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* User Info */}
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                <h4 className="font-medium text-slate-700 mb-2">ID Korisnika</h4>
+                <p className="text-sm text-slate-500 font-mono">{getUserId()}</p>
+                <p className="text-xs text-slate-400 mt-2">Koristi se za registraciju obavijesti</p>
+              </div>
             </div>
           </div>
         )}

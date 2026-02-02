@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Users, Calendar, Tag, Settings, Download, Upload, RotateCcw, Plus, Trash2, X, FileText, Save, FolderOpen, ArrowLeftRight, AlertTriangle, Bed, Utensils } from 'lucide-react';
-import { Employee, Shift, Duty, Role, DayOfWeek, ALL_DAYS, ShiftTemplate } from '../../types';
+import { Employee, Shift, Duty, Role, DayOfWeek, ALL_DAYS, ShiftTemplate } from '../../types/index';
 import { generateId } from '../../utils/id';
 import { exportToCSV, exportToJSON } from '../../utils/storage';
 

@@ -1,0 +1,40 @@
+// App build.gradle
+
+plugins {
+    id "com.android.application"
+}
+
+android {
+    namespace "com.restohub.app"
+    compileSdk 33
+    defaultConfig {
+        applicationId "com.restohub.app"
+        minSdk 22
+        targetSdk 33
+        versionCode 1
+        versionName "1.0.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField "String", "FIREBASE_ANDROID_APP_ID", "\"${System.env.FIREBASE_ANDROID_APP_ID ?: ''}\""
+        buildConfigField "String", "FIREBASE_API_KEY", "\"${System.env.FIREBASE_API_KEY ?: ''}\""
+        buildConfigField "String", "FIREBASE_PROJECT_ID", "\"${System.env.FIREBASE_PROJECT_ID ?: ''}\""
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation "androidx.appcompat:appcompat:1.6.1"
+    implementation "com.google.android.material:material:1.9.0"
+    implementation "androidx.constraintlayout:constraintlayout:2.1.4"
+    implementation "androidx.core:core-ktx:1.10.1"
+    implementation "com.google.firebase:firebase-messaging:23.1.0"
+    implementation "com.capacitorjs:android-core:5.0.0"
+}

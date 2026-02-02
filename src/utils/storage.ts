@@ -3,7 +3,7 @@
 // Handles localStorage cleanup and data consistency
 // ===========================================
 
-import { Assignment, ShiftTemplate } from '../types';
+import { Assignment, ShiftTemplate } from '../types/index';
 
 const STORAGE_KEYS = {
   EMPLOYEES: 'shift_scheduler_employees',
