@@ -208,34 +208,45 @@ export function ScheduleGrid({
                 return (
                   <div key={`${shift.id}-${day}`} className={`schedule-cell border-r border-slate-200 last:border-r-0 ${!isShiftDay ? 'opacity-50' : ''}`}>
                     {isShiftDay && shiftAssignments.length > 0 ? (
-                      <div className="space-y-1">
-                        {shiftAssignments.map(assignment => {
-                          const employee = getEmployeeById(assignment.employeeId);
-                          const duty = assignment.specialDuty ? getDutyById(assignment.specialDuty) : null;
-                          
-                          return (
-                            <div
-                              key={assignment.id}
-                              className="group relative flex items-center gap-1 p-1 rounded bg-primary-100 hover:bg-primary-200 transition-colors"
-                            >
-                              <span className="text-xs font-medium text-primary-700 truncate">
-                                {employee?.name || '?'}
-                              </span>
-                              {duty && (
-                                <span className="text-[10px] px-1 rounded bg-primary-200 text-primary-800">
-                                  {duty.label}
-                                </span>
-                              )}
-                              <button
-                                onClick={() => onRemoveAssignment(assignment.id)}
-                                className="absolute -right-1 -top-1 p-0.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      <>
+                        {/* Assigned employees */}
+                        <div className="space-y-1">
+                          {shiftAssignments.map(assignment => {
+                            const employee = getEmployeeById(assignment.employeeId);
+                            const duty = assignment.specialDuty ? getDutyById(assignment.specialDuty) : null;
+                            
+                            return (
+                              <div
+                                key={assignment.id}
+                                className="group relative flex items-center gap-1 p-1 rounded bg-primary-100 hover:bg-primary-200 transition-colors"
                               >
-                                <X size={10} />
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
+                                <span className="text-xs font-medium text-primary-700 truncate">
+                                  {employee?.name || '?'}
+                                </span>
+                                {duty && (
+                                  <span className="text-[10px] px-1 rounded bg-primary-200 text-primary-800">
+                                    {duty.label}
+                                  </span>
+                                )}
+                                <button
+                                  onClick={() => onRemoveAssignment(assignment.id)}
+                                  className="absolute -right-1 -top-1 p-0.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  <X size={10} />
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {/* Add more button */}
+                        <button
+                          onClick={() => handleOpenAssignModal(shift.id, shift.label)}
+                          className="w-full mt-1 py-1 flex items-center justify-center text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded transition-colors text-xs"
+                          title="Dodaj još radnika"
+                        >
+                          <Plus size={14} className="mr-1" /> Dodaj
+                        </button>
+                      </>
                     ) : isShiftDay ? (
                       <button
                         onClick={() => handleOpenAssignModal(shift.id, shift.label)}
