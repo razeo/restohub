@@ -134,8 +134,8 @@ export function ScheduleGrid({
     e.preventDefault();
     setDragOverCell(null);
     
-    // Extract shiftId and day from cellId (format: "shiftId-day")
-    const [shiftId, day] = cellId.split('-');
+    // Extract shiftId and day from cellId (format: "shiftId___day")
+    const [shiftId, day] = cellId.split('___');
     
     try {
       const data = JSON.parse(e.dataTransfer.getData('application/json'));
@@ -234,7 +234,7 @@ export function ScheduleGrid({
               {/* Days - ALL shifts shown for ALL days */}
               {weekDays.map((day) => {
                 const shiftAssignments = getAssignmentsForShiftAndDay(shift.id, day);
-                const cellId = `${shift.id}-${day}`;
+                const cellId = `${shift.id}___${day}`;
                 
                 return (
                   <div 
