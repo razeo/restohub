@@ -321,7 +321,7 @@ body {
     height: auto !important;
     overflow: visible !important;
     background: white !important;
-    padding: 20px !important;
+    padding: 15px !important;
   }
   
   /* Hide all buttons */
@@ -329,11 +329,25 @@ body {
     display: none !important;
   }
   
+  /* Hide navigation arrows in header */
+  .flex.items-center.gap-2 button {
+    display: none !important;
+  }
+  
+  /* Week date range below title */
+  .week-date-range {
+    display: block !important;
+    text-align: center !important;
+    font-size: 16px !important;
+    color: #333 !important;
+    margin-bottom: 15px !important;
+  }
+  
   /* Show header title */
   #schedule-container h1 {
     display: block !important;
-    font-size: 24px !important;
-    margin-bottom: 10px !important;
+    font-size: 28px !important;
+    margin-bottom: 5px !important;
     text-align: center !important;
   }
   
@@ -341,6 +355,7 @@ body {
   .schedule-grid {
     border: 2px solid #333 !important;
     page-break-inside: avoid;
+    font-size: 12px;
   }
   
   .schedule-grid > div {
@@ -348,8 +363,8 @@ body {
   }
   
   .schedule-cell {
-    min-height: 60px !important;
-    padding: 4px !important;
+    min-height: 50px !important;
+    padding: 3px !important;
     border-color: #999 !important;
   }
   
@@ -357,6 +372,33 @@ body {
     background: #f0f0f0 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+    padding: 8px 4px !important;
+  }
+  
+  .schedule-cell-header div:first-child {
+    font-size: 13px;
+    font-weight: 600;
+  }
+  
+  .schedule-cell-header div:last-child {
+    font-size: 10px;
+  }
+  
+  /* Shift labels */
+  .p-3.bg-slate-50 {
+    background: #f8fafc !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    padding: 8px 6px !important;
+  }
+  
+  .p-3.bg-slate-50 .font-medium {
+    font-size: 12px;
+    font-weight: 600;
+  }
+  
+  .p-3.bg-slate-50 .text-xs {
+    font-size: 10px;
   }
   
   /* Remove hover effects */
@@ -365,53 +407,48 @@ body {
     background: white !important;
   }
   
-  /* Employee badges */
-  .bg-primary-100 {
-    background: #e0e7ff !important;
+  /* Employee badges - COLORED BORDER ONLY for print */
+  .bg-orange-100,
+  .bg-purple-100,
+  .bg-emerald-100,
+  .bg-pink-100,
+  .bg-amber-100,
+  .bg-indigo-100,
+  .bg-blue-100 {
+    background: white !important;
+    border: 2px solid !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
   
-  .bg-primary-200 {
-    background: #c7d2fe !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
+  .bg-orange-100 { border-color: #f97316 !important; color: #c2410c !important; }
+  .bg-purple-100 { border-color: #a855f7 !important; color: #7e22ce !important; }
+  .bg-emerald-100 { border-color: #10b981 !important; color: #047857 !important; }
+  .bg-pink-100 { border-color: #ec4899 !important; color: #be185d !important; }
+  .bg-amber-100 { border-color: #f59e0b !important; color: #b45309 !important; }
+  .bg-indigo-100 { border-color: #6366f1 !important; color: #4338ca !important; }
+  .bg-blue-100 { border-color: #3b82f6 !important; color: #1d4ed8 !important; }
+  
+  /* Duty badges */
+  .bg-white\/50 {
+    background: #f1f5f9 !important;
+    border: 1px solid #cbd5e1 !important;
   }
   
   /* Remove buttons from print */
   .absolute,
   .group-hover\:opacity-100,
   .w-full.mt-1,
-  .w-full.h-full.flex {
+  .w-full.h-full.flex,
+  .pointer-events-none,
+  .hidden {
     display: none !important;
   }
   
-  /* Shift labels */
-  .p-3.bg-slate-50 {
-    background: #f8fafc !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-  
-  /* Legend - show in print */
-  .mt-4.flex.flex-wrap.gap-4.text-sm.text-slate-600 {
-    display: flex !important;
-    margin-top: 20px !important;
-    page-break-inside: avoid;
-  }
-  
-  /* Quick Stats */
-  .mt-6.grid.grid-cols-2.md\:grid-cols-4.gap-4 {
-    display: flex !important;
-    flex-wrap: wrap !important;
-    gap: 20px !important;
-    margin-top: 20px !important;
-  }
-  
-  .card {
-    border: 1px solid #ddd !important;
-    padding: 10px !important;
-    min-width: 120px !important;
+  /* Hide legend, stats, drag hints - everything below grid */
+  .mt-4,
+  .mt-6 {
+    display: none !important;
   }
   
   /* Page setup */
@@ -419,32 +456,15 @@ body {
     margin: 1cm;
     size: landscape;
   }
-  
-  /* Print date at bottom */
-  body::after {
-    content: "RestoHub - Raspored smjena - " attr(data-print-date);
-    display: block;
-    text-align: center;
-    margin-top: 20px;
-    font-size: 12px;
-    color: #666;
-  }
 }
 
-/* ===========================================
-   Print Layout Specific
-   =================================== */
+/* Show week date range (hidden by default) */
+.week-date-range {
+  display: none;
+}
 
-@media print and (max-width: 768px) {
-  .schedule-grid {
-    font-size: 12px;
-  }
-  
-  .schedule-cell-header div:first-child {
-    font-size: 14px;
-  }
-  
-  .schedule-cell-header div:last-child {
-    font-size: 10px;
+@media print {
+  .week-date-range {
+    display: block !important;
   }
 }

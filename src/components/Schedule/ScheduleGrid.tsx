@@ -31,6 +31,14 @@ export function ScheduleGrid({
   const weekDays = Object.values(DayOfWeek);
   const weekDates = weekDays.map(day => dayOfWeekToDate(currentWeekStart, day));
 
+  // Get week date range string
+  const getWeekDateRange = () => {
+    const start = weekDates[0];
+    const end = weekDates[6];
+    const formatDate = (d: Date) => d.toLocaleDateString('hr-HR');
+    return `${formatDate(start)} - ${formatDate(end)}`;
+  };
+
   // Modal state for manual employee assignment
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [selectedShiftId, setSelectedShiftId] = useState<string | null>(null);
@@ -186,6 +194,9 @@ export function ScheduleGrid({
             <h1 className="text-xl font-bold text-slate-800">
               📅 Raspored smjena
             </h1>
+            <div className="week-date-range">
+              {getWeekDateRange()}
+            </div>
           </div>
           
           {/* Week Navigation */}
