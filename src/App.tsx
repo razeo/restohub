@@ -427,35 +427,35 @@ function App() {
         )}
 
         {currentPage === 'handover' && (
-          <ShiftHandover onClose={() => setCurrentPage('schedule')} />
+          <ShiftHandover onClose={() => { setCurrentPage('schedule'); setIsSidebarOpen(true); }} />
         )}
 
         {currentPage === 'report' && (
-          <DailyReport onClose={() => setCurrentPage('schedule')} />
+          <DailyReport onClose={() => { setCurrentPage('schedule'); setIsSidebarOpen(true); }} />
         )}
 
         {currentPage === 'outofstock' && (
-          <OutOfStock onClose={() => setCurrentPage('schedule')} />
+          <OutOfStock onClose={() => { setCurrentPage('schedule'); setIsSidebarOpen(true); }} />
         )}
 
         {currentPage === 'responsibility' && (
-          <ResponsibilityPlan onClose={() => setCurrentPage('schedule')} />
+          <ResponsibilityPlan onClose={() => { setCurrentPage('schedule'); setIsSidebarOpen(true); }} />
         )}
 
         {currentPage === 'roomservice' && (
-          <RoomService onClose={() => setCurrentPage('schedule')} />
+          <RoomService onClose={() => { setCurrentPage('schedule'); setIsSidebarOpen(true); }} />
         )}
 
         {currentPage === 'wastelist' && (
-          <WasteList onClose={() => setCurrentPage('schedule')} />
+          <WasteList onClose={() => { setCurrentPage('schedule'); setIsSidebarOpen(true); }} />
         )}
 
         {currentPage === 'dailymenu' && (
-          <DailyMenu onClose={() => setCurrentPage('schedule')} />
+          <DailyMenu onClose={() => { setCurrentPage('schedule'); setIsSidebarOpen(true); }} />
         )}
 
         {currentPage === 'allergens' && (
-          <AllergenGuide onClose={() => setCurrentPage('schedule')} />
+          <AllergenGuide onClose={() => { setCurrentPage('schedule'); setIsSidebarOpen(true); }} />
         )}
 
         {currentPage === 'settings' && (
