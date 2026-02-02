@@ -218,7 +218,7 @@ export function ScheduleGrid({
           <div className="flex items-center gap-2">
             <button
               onClick={onToggleChat}
-              className={`p-2 hover:bg-slate-100 rounded-lg transition-colors ${true ? 'bg-primary-100 text-primary-600' : 'text-slate-600'}`}
+              className="p-2 hover:bg-slate-100 rounded-lg transition-colors bg-primary-100 text-primary-600"
               title="Otvori chat"
             >
               <Bot size={20} />

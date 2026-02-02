@@ -152,6 +152,8 @@ export const useNotifications = (): UseNotificationsReturn => {
 
       if (success) {
         toast.success(`Subscribed to ${sector} notifications`);
+        // Note: refreshSubscriptions is defined later in the file
+        // This is safe because useCallback creates stable function references
         await refreshSubscriptions();
       }
 

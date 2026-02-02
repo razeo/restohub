@@ -56,7 +56,9 @@ export function DailyReport({ onClose }: DailyReportProps) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
-    } catch {}
+    } catch {
+      // Ignore parse errors
+    }
     return [];
   });
   
@@ -92,6 +94,7 @@ export function DailyReport({ onClose }: DailyReportProps) {
     const today = formatDateToId(new Date());
     const existing = entries.find(e => e.date === today);
     if (existing) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCurrentEntry(existing);
     }
   }, [entries]);

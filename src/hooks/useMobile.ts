@@ -35,6 +35,8 @@ export function useMobile(): MobileDetectResult {
       };
     };
 
+    // Set initial device detection
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setResult(detectDevice());
 
     // Handle resize for responsive detection

@@ -69,7 +69,7 @@ export function Sidebar({
     try {
       const stored = localStorage.getItem('shift_scheduler_templates');
       return stored ? JSON.parse(stored) : [];
-    } catch {
+    } catch (error) {
       return [];
     }
   });
