@@ -160,7 +160,7 @@ export function ScheduleGrid({
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-slate-100">
+    <div id="schedule-container" className="flex-1 flex flex-col overflow-hidden bg-slate-100">
       {/* Header */}
       <header className="bg-white border-b border-slate-200 px-4 py-3">
         <div className="flex items-center justify-between">
