@@ -55,6 +55,26 @@ export function ScheduleGrid({
     return duties.find(d => d.id === id);
   };
 
+  // Get role-based color classes for employee badges
+  const getRoleColor = (role: Role) => {
+    switch (role) {
+      case Role.CHEF:
+        return 'bg-orange-100 text-orange-700';
+      case Role.MANAGER:
+        return 'bg-purple-100 text-purple-700';
+      case Role.BARTENDER:
+        return 'bg-emerald-100 text-emerald-700';
+      case Role.HOST:
+        return 'bg-pink-100 text-pink-700';
+      case Role.DISHWASHER:
+        return 'bg-amber-100 text-amber-700';
+      case Role.HEAD_WAITER:
+        return 'bg-indigo-100 text-indigo-700';
+      default:
+        return 'bg-blue-100 text-blue-700'; // Server and others
+    }
+  };
+
   const handleOpenAssignModal = (shiftId: string, shiftLabel: string, day: DayOfWeek) => {
     setSelectedShiftId(shiftId);
     setSelectedShiftLabel(shiftLabel);
@@ -255,13 +275,13 @@ export function ScheduleGrid({
                             return (
                               <div
                                 key={assignment.id}
-                                className="group relative flex items-center gap-1 p-1 rounded bg-primary-100 hover:bg-primary-200 transition-colors"
+                                className={`group relative flex items-center gap-1 p-1 rounded ${getRoleColor(employee?.role || Role.SERVER)} hover:opacity-80 transition-opacity`}
                               >
-                                <span className="text-xs font-medium text-primary-700 truncate">
+                                <span className="text-xs font-medium truncate">
                                   {employee?.name || '?'}
                                 </span>
                                 {duty && (
-                                  <span className="text-[10px] px-1 rounded bg-primary-200 text-primary-800">
+                                  <span className="text-[10px] px-1 rounded bg-white/50">
                                     {duty.label}
                                   </span>
                                 )}
