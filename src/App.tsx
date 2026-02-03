@@ -5,7 +5,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
-import { Menu, Settings, Bell, Upload, Download, FileText, RotateCcw } from 'lucide-react';
+import { Menu, Settings, Bell, Upload, Download, FileText, RotateCcw, Calendar } from 'lucide-react';
 import { STORAGE_KEYS, runMigrations, getStorageItem, setStorageItem, clearAllStorage } from './utils/storage';
 import { generateEmployeeId, generateDutyId, generateShiftId, generateAssignmentId } from './utils/id';
 import { getMonday, formatDateToId, addWeeks } from './utils/date';
@@ -648,6 +648,17 @@ function App() {
                   <RotateCcw size={18} /> Resetuj sve
                 </button>
               </div>
+              
+              {/* Back to Schedule */}
+              <button 
+                onClick={() => {
+                  setCurrentPage('schedule');
+                  setIsSidebarOpen(true);
+                }}
+                className="btn btn-primary w-full flex items-center justify-center gap-2 mt-6"
+              >
+                <Calendar size={18} /> Vrati se na Raspored
+              </button>
             </div>
           </div>
         )}
