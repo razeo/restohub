@@ -2,6 +2,9 @@
 // Core Types for RestoHub
 // ===========================================
 
+// Re-export user types
+export * from './users';
+
 export enum Role {
   SERVER = 'Server',
   CHEF = 'Chef',
