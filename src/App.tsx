@@ -32,11 +32,13 @@ import { DailyMenu } from './components/DailyMenu';
 import { AllergenGuide } from './components/AllergenGuide';
 import { Login } from './components/Auth/Login';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { PermissionsProvider, usePermissionCheck } from './contexts/PermissionsContext';
+import { UserManagement, PermissionsEditor } from './components/Admin';
 import { processScheduleRequest, isAiConfigured } from './services/ai';
 import { useNotifications } from './hooks/useNotifications';
 import { isFcmConfigured, isTelegramConfigured } from './services/notifications';
 
-type PageType = 'schedule' | 'handover' | 'report' | 'outofstock' | 'responsibility' | 'roomservice' | 'wastelist' | 'dailymenu' | 'allergens' | 'settings';
+type PageType = 'schedule' | 'handover' | 'report' | 'outofstock' | 'responsibility' | 'roomservice' | 'wastelist' | 'dailymenu' | 'allergens' | 'settings' | 'users' | 'permissions';
 
 interface ImportData {
   employees?: Employee[];
@@ -82,6 +84,7 @@ const DEFAULT_AI_RULES = `• Svaki radnik ima max 5 smjena sedmično
 
 function App() {
   const { user } = useAuth();
+  const { canManageUsers, canAccessSettings } = usePermissionCheck();
   
   // Show login if not authenticated
   if (!user) {
@@ -439,6 +442,8 @@ function App() {
           onResetAll={handleResetAll}
           onImportData={handleImportData}
           onClose={() => setIsSidebarOpen(false)}
+          canManageUsers={canManageUsers}
+          canAccessSettings={canAccessSettings}
         />
       </div>
 
@@ -671,6 +676,20 @@ function App() {
             </div>
           </div>
         )}
+
+        {/* Users Management Page - Admin Only */}
+        {currentPage === 'users' && (
+          <div className="flex-1 bg-slate-100 p-6 overflow-auto">
+            <UserManagement />
+          </div>
+        )}
+
+        {/* Permissions Page - Admin Only */}
+        {currentPage === 'permissions' && (
+          <div className="flex-1 bg-slate-100 p-6 overflow-auto">
+            <PermissionsEditor />
+          </div>
+        )}
         
         {!isSidebarOpen && (
            <button 
@@ -715,7 +734,9 @@ function App() {
 export function RestoHubApp() {
   return (
     <AuthProvider>
-      <App />
+      <PermissionsProvider>
+        <App />
+      </PermissionsProvider>
     </AuthProvider>
   );
 }

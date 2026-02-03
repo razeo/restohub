@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Users, Calendar, Tag, Settings, Download, Upload, RotateCcw, Plus, Trash2, X, FileText, Save, FolderOpen, ArrowLeftRight, AlertTriangle, Bed, Utensils } from 'lucide-react';
+import { Users, Calendar, Tag, Settings, Download, Upload, RotateCcw, Plus, Trash2, X, FileText, Save, FolderOpen, ArrowLeftRight, AlertTriangle, Bed, Utensils, Shield, UserCog } from 'lucide-react';
 import { Employee, Shift, Duty, Role, DayOfWeek, ALL_DAYS, ShiftTemplate, Assignment } from '../../types/index';
 import { generateId } from '../../utils/id';
 import { exportToCSV, exportToJSON } from '../../utils/storage';
@@ -24,6 +24,8 @@ export interface SidebarProps {
   onResetAll: () => void;
   onImportData: (data: any) => void;
   onClose: () => void;
+  canManageUsers?: boolean;
+  canAccessSettings?: boolean;
 }
 
 type TabType = 'employees' | 'shifts' | 'duties' | 'templates' | 'ai' | 'settings';
@@ -48,6 +50,8 @@ export function Sidebar({
   onResetAll,
   onImportData,
   onClose,
+  canManageUsers = false,
+  canAccessSettings = false,
 }: SidebarProps) {
   const [activeTab, setActiveTab] = useState<TabType>('employees');
   const [isAdding, setIsAdding] = useState(false);
@@ -206,11 +210,17 @@ export function Sidebar({
           { id: 'wastelist', icon: Trash2, label: 'Otpis' },
           { id: 'dailymenu', icon: Utensils, label: 'Meni' },
           { id: 'allergens', icon: AlertTriangle, label: 'Alerg.' },
-          { id: 'settings', icon: Settings, label: 'Postavke' },
+          ...(canManageUsers ? [
+            { id: 'users', icon: UserCog, label: 'Korisnici' },
+            { id: 'permissions', icon: Shield, label: 'Dozvole' },
+          ] as const : []),
+          ...(canAccessSettings ? [
+            { id: 'settings', icon: Settings, label: 'Postavke' },
+          ] as const : []),
         ].map(({ id, icon: Icon, label }) => (
           <button
             key={id}
-            onClick={() => onPageChange(id)}
+            onClick={() => onPageChange?.(id)}
             className={`flex-shrink-0 p-2 flex flex-col items-center gap-0.5 text-[10px] transition-colors ${
               currentPage === id 
                 ? 'text-primary-600 border-b-2 border-primary-600 bg-primary-50' 
