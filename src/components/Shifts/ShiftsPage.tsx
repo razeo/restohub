@@ -43,6 +43,7 @@ export function ShiftsPage({ shifts, onAddShift, onRemoveShift, onUpdateShift }:
     endTime: '16:00',
     label: '',
     color: '#3B82F6',
+    replicateToAllDays: false,
   });
 
   const shiftsByDay = DAYS.map(dayConfig => ({
@@ -58,6 +59,7 @@ export function ShiftsPage({ shifts, onAddShift, onRemoveShift, onUpdateShift }:
       endTime: '16:00',
       label: '',
       color: '#3B82F6',
+      replicateToAllDays: false,
     });
     setShowModal(true);
   };
@@ -70,6 +72,7 @@ export function ShiftsPage({ shifts, onAddShift, onRemoveShift, onUpdateShift }:
       endTime: shift.endTime,
       label: shift.label || '',
       color: shift.color || '#3B82F6',
+      replicateToAllDays: false,
     });
     setShowModal(true);
   };
@@ -86,6 +89,17 @@ export function ShiftsPage({ shifts, onAddShift, onRemoveShift, onUpdateShift }:
       onUpdateShift({
         ...editingShift,
         ...formData,
+      });
+    } else if (formData.replicateToAllDays) {
+      // Add shift to all days
+      DAYS.forEach(dayConfig => {
+        onAddShift({
+          day: dayConfig.value,
+          startTime: formData.startTime,
+          endTime: formData.endTime,
+          label: formData.label,
+          color: formData.color,
+        });
       });
     } else {
       onAddShift(formData);
@@ -221,12 +235,30 @@ export function ShiftsPage({ shifts, onAddShift, onRemoveShift, onUpdateShift }:
                   value={formData.day}
                   onChange={(e) => setFormData(prev => ({ ...prev, day: e.target.value as DayOfWeek }))}
                   className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  disabled={formData.replicateToAllDays}
                 >
                   {DAYS.map(day => (
                     <option key={day.value} value={day.value}>{day.label}</option>
                   ))}
                 </select>
               </div>
+
+              {/* Replicate to all days */}
+              {!editingShift && (
+                <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                  <input
+                    type="checkbox"
+                    id="replicateToAllDays"
+                    checked={formData.replicateToAllDays}
+                    onChange={(e) => setFormData(prev => ({ ...prev, replicateToAllDays: e.target.checked }))}
+                    className="w-5 h-5 text-blue-600 rounded focus:ring-blue-200"
+                  />
+                  <label htmlFor="replicateToAllDays" className="flex-1 cursor-pointer">
+                    <div className="font-medium text-slate-800">Dodaj na sve dane</div>
+                    <div className="text-sm text-slate-500">Kreirat će smjenu za svaki dan u sedmici</div>
+                  </label>
+                </div>
+              )}
 
               {/* Time */}
               <div className="grid grid-cols-2 gap-4">
