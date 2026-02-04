@@ -89,7 +89,7 @@ function App() {
   const { user } = useAuth();
   const { canManageUsers, canAccessSettings } = usePermissionCheck();
 
-  // Initialize notifications - must be called before any conditional returns
+  // Initialize notifications
   const {
     requestPermission,
     registerToken,
@@ -99,7 +99,51 @@ function App() {
     fcmToken,
   } = useNotifications();
 
-  // Helper to get user ID - safe to call anytime
+  // State for schedule management
+  const [currentPage, setCurrentPage] = useState<PageType>('schedule');
+  const [breadcrumbs, setBreadcrumbs] = useState<{label: string; onClick?: () => void}[]>([
+    { label: 'Raspored' }
+  ]);
+  const [employees, setEmployees] = useState<Employee[]>(() =>
+    getStorageItem(STORAGE_KEYS.EMPLOYEES, INITIAL_EMPLOYEES)
+  );
+  const [duties, setDuties] = useState<Duty[]>(() =>
+    getStorageItem(STORAGE_KEYS.DUTIES, INITIAL_DUTIES)
+  );
+  const [shifts, setShifts] = useState<Shift[]>(() =>
+    getStorageItem(STORAGE_KEYS.SHIFTS, INITIAL_SHIFTS)
+  );
+  const [assignments, setAssignments] = useState<Assignment[]>(() =>
+    getStorageItem(STORAGE_KEYS.ASSIGNMENTS, [])
+  );
+  const [aiRules, setAiRules] = useState<string>(() =>
+    getStorageItem(STORAGE_KEYS.AI_RULES, DEFAULT_AI_RULES)
+  );
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(getMonday(new Date()));
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  // Computed values
+  const currentWeekId = useMemo(() => formatDateToId(currentWeekStart), [currentWeekStart]);
+  const weekAssignments = useMemo(() =>
+    assignments.filter(a => a.weekId === currentWeekId),
+    [assignments, currentWeekId]
+  );
+
+  // Navigate to page with breadcrumbs
+  const navigateTo = (page: PageType, label: string) => {
+    setCurrentPage(page);
+    setBreadcrumbs([
+      { label: 'Raspored', onClick: () => navigateTo('schedule', 'Raspored') },
+      { label }
+    ]);
+    setIsSidebarOpen(false);
+  };
+
+  // Helper to get user ID
   const getUserId = () => user?.id || 'anonymous';
 
   // Show login if not authenticated
@@ -107,10 +151,7 @@ function App() {
     return <Login />;
   }
 
-  /* eslint-disable react-hooks/rules-of-hooks */
-  // Hooks below are called at top level - ESLint false-positive on early return pattern
-
-  // Set print date on mount
+  // Effects (only run when user is authenticated)
   useEffect(() => {
     document.body.setAttribute('data-print-date', new Date().toLocaleDateString('hr-HR'));
   }, []);
@@ -165,53 +206,6 @@ function App() {
   useEffect(() => {
     runMigrations();
   }, []);
-
-  const [currentPage, setCurrentPage] = useState<PageType>('schedule');
-
-  // Breadcrumbs for navigation
-  const [breadcrumbs, setBreadcrumbs] = useState<{label: string; onClick?: () => void}[]>([
-    { label: 'Raspored' }
-  ]);
-
-  // Navigate to page with breadcrumbs
-  const navigateTo = (page: PageType, label: string) => {
-    setCurrentPage(page);
-    setBreadcrumbs([
-      { label: 'Raspored', onClick: () => navigateTo('schedule', 'Raspored') },
-      { label }
-    ]);
-    setIsSidebarOpen(false);
-  };
-
-  const [employees, setEmployees] = useState<Employee[]>(() =>
-    getStorageItem(STORAGE_KEYS.EMPLOYEES, INITIAL_EMPLOYEES)
-  );
-  const [duties, setDuties] = useState<Duty[]>(() =>
-    getStorageItem(STORAGE_KEYS.DUTIES, INITIAL_DUTIES)
-  );
-  const [shifts, setShifts] = useState<Shift[]>(() =>
-    getStorageItem(STORAGE_KEYS.SHIFTS, INITIAL_SHIFTS)
-  );
-  const [assignments, setAssignments] = useState<Assignment[]>(() =>
-    getStorageItem(STORAGE_KEYS.ASSIGNMENTS, [])
-  );
-  const [aiRules, setAiRules] = useState<string>(() =>
-    getStorageItem(STORAGE_KEYS.AI_RULES, DEFAULT_AI_RULES)
-  );
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(getMonday(new Date()));
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isChatOpen, setIsChatOpen] = useState(false);
-  const [isAiLoading, setIsAiLoading] = useState(false);
-  const [aiError, setAiError] = useState<string | null>(null);
-
-  const currentWeekId = useMemo(() => formatDateToId(currentWeekStart), [currentWeekStart]);
-  const weekAssignments = useMemo(() =>
-    assignments.filter(a => a.weekId === currentWeekId),
-    [assignments, currentWeekId]
-  );
-
-  /* eslint-enable react-hooks/rules-of-hooks */
 
   const addEmployee = (newEmp: Omit<Employee, 'id'>) => {
     const updated = [...employees, { ...newEmp, id: generateEmployeeId() }];
