@@ -85,7 +85,7 @@ const DEFAULT_AI_RULES = `• Svaki radnik ima max 5 smjena sedmično
 • Barbier i Host ne mogu raditi noćne smjene
 • Vikendi su za iskusne radnike`;
 
-function App() {
+function AppContent() {
   const { user } = useAuth();
   const { canManageUsers, canAccessSettings } = usePermissionCheck();
 
@@ -146,38 +146,22 @@ function App() {
   // Helper to get user ID
   const getUserId = () => user?.id || 'anonymous';
 
-  // Show login if not authenticated - all hooks called before this point
-  if (!user) {
-    return (
-      <div className="flex h-screen bg-slate-100 overflow-hidden font-sans">
-        <Toaster position="top-right" />
-        <Login />
-      </div>
-    );
-  }
-
-  // Effects (only run when user is authenticated)
+  // All effects - called unconditionally
   useEffect(() => {
     document.body.setAttribute('data-print-date', new Date().toLocaleDateString('hr-HR'));
   }, []);
 
-  // Initialize notification services on app load
   useEffect(() => {
     const initializeNotifications = async () => {
-      // Check if notifications are configured
       if (!isFcmConfigured() && !isTelegramConfigured()) {
         console.log('Notification services not configured');
         return;
       }
-
-      // Request permission and register token
       const permissionGranted = await requestPermission();
       if (permissionGranted && fcmToken) {
         await registerToken();
       }
     };
-
-    // Only initialize on first load (not on every render)
     const initialized = sessionStorage.getItem('notifications_initialized');
     if (!initialized) {
       initializeNotifications();
@@ -185,10 +169,7 @@ function App() {
     }
   }, [requestPermission, registerToken, fcmToken]);
 
-  // Show toast for incoming notifications (foreground)
   useEffect(() => {
-    // This would be connected to Firebase onMessage handler
-    // For now, we'll simulate notification toasts
     const handleNotification = (event: CustomEvent) => {
       const { title, body } = event.detail;
       toast.custom((t) => (
@@ -203,7 +184,6 @@ function App() {
         </div>
       ), { duration: 5000 });
     };
-
     window.addEventListener('restohub:notification', handleNotification as EventListener);
     return () => window.removeEventListener('restohub:notification', handleNotification as EventListener);
   }, []);
@@ -211,6 +191,16 @@ function App() {
   useEffect(() => {
     runMigrations();
   }, []);
+
+  // Render login if not authenticated - all hooks called before this point
+  if (!user) {
+    return (
+      <div className="flex h-screen bg-slate-100 overflow-hidden font-sans">
+        <Toaster position="top-right" />
+        <Login />
+      </div>
+    );
+  }
 
   const addEmployee = (newEmp: Omit<Employee, 'id'>) => {
     const updated = [...employees, { ...newEmp, id: generateEmployeeId() }];
@@ -811,7 +801,7 @@ export function RestoHubApp() {
   return (
     <AuthProvider>
       <PermissionsProvider>
-        <App />
+        <AppContent />
       </PermissionsProvider>
     </AuthProvider>
   );
