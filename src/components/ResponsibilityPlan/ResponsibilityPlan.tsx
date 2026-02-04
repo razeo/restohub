@@ -59,7 +59,7 @@ export function ResponsibilityPlan({ onClose }: ResponsibilityPlanProps) {
     return [];
   });
   
-  const [currentEntry, setCurrentEntry] = useState<ResponsibilityEntry>({
+  const [currentEntry, setCurrentEntry] = useState<ResponsibilityEntry>(() => ({
     id: '',
     date: formatDateToId(new Date()),
     shift: 'I',
@@ -69,7 +69,7 @@ export function ResponsibilityPlan({ onClose }: ResponsibilityPlanProps) {
     shiftLeader: '',
     notes: '',
     createdAt: Date.now(),
-  });
+  }));
   
   const [isSaved, setIsSaved] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);

@@ -23,7 +23,7 @@ export function Login() {
       } else {
         toast.error('Pogrešno korisničko ime ili lozinka');
       }
-    } catch (error) {
+    } catch {
       toast.error('Došlo je do greške');
     } finally {
       setIsLoading(false);

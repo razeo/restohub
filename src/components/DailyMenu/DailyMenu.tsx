@@ -55,7 +55,7 @@ export function DailyMenu({ onClose }: DailyMenuProps) {
     return [];
   });
   
-  const [currentEntry, setCurrentEntry] = useState<DailyMenuEntry>({
+  const [currentEntry, setCurrentEntry] = useState<DailyMenuEntry>(() => ({
     id: '',
     date: formatDateToId(new Date()),
     couvert: '',
@@ -66,7 +66,7 @@ export function DailyMenu({ onClose }: DailyMenuProps) {
     restaurantSupervisor: '',
     notes: '',
     createdAt: Date.now(),
-  });
+  }));
   
   const [isSaved, setIsSaved] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);

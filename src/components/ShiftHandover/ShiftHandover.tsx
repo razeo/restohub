@@ -61,7 +61,7 @@ export function ShiftHandover({ onClose }: ShiftHandoverProps) {
     return [];
   });
   
-  const [currentEntry, setCurrentEntry] = useState<HandoverEntry>({
+  const [currentEntry, setCurrentEntry] = useState<HandoverEntry>(() => ({
     id: '',
     date: formatDateToId(new Date()),
     fromShift: 'I',
@@ -85,7 +85,7 @@ export function ShiftHandover({ onClose }: ShiftHandoverProps) {
     fromSignature: '',
     toSignature: '',
     createdAt: Date.now(),
-  });
+  }));
   
   const [isSaved, setIsSaved] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);

@@ -48,7 +48,7 @@ export function RoomService({ onClose }: RoomServiceProps) {
     return [];
   });
   
-  const [currentEntry, setCurrentEntry] = useState<RoomServiceEntry>({
+  const [currentEntry, setCurrentEntry] = useState<RoomServiceEntry>(() => ({
     id: '',
     date: formatDateToId(new Date()),
     orders: [
@@ -58,7 +58,7 @@ export function RoomService({ onClose }: RoomServiceProps) {
     completedOrders: 0,
     notes: '',
     createdAt: Date.now(),
-  });
+  }));
   
   const [isSaved, setIsSaved] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);

@@ -62,7 +62,7 @@ export function DailyReport({ onClose }: DailyReportProps) {
     return [];
   });
   
-  const [currentEntry, setCurrentEntry] = useState<DailyReportEntry>({
+  const [currentEntry, setCurrentEntry] = useState<DailyReportEntry>(() => ({
     id: '',
     date: formatDateToId(new Date()),
     manager: '',
@@ -85,7 +85,7 @@ export function DailyReport({ onClose }: DailyReportProps) {
     chefIISignature: '',
     managementSignature: '',
     createdAt: Date.now(),
-  });
+  }));
   
   const [isSaved, setIsSaved] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);

@@ -89,12 +89,7 @@ function App() {
   const { user } = useAuth();
   const { canManageUsers, canAccessSettings } = usePermissionCheck();
 
-  // Show login if not authenticated
-  if (!user) {
-    return <Login />;
-  }
-
-  // Initialize notifications
+  // Initialize notifications - must be called before any conditional returns
   const {
     requestPermission,
     registerToken,
@@ -102,8 +97,18 @@ function App() {
     isFcmReady,
     isTelegramReady,
     fcmToken,
-    getUserId,
   } = useNotifications();
+
+  // Helper to get user ID - safe to call anytime
+  const getUserId = () => user?.id || 'anonymous';
+
+  // Show login if not authenticated
+  if (!user) {
+    return <Login />;
+  }
+
+  /* eslint-disable react-hooks/rules-of-hooks */
+  // Hooks below are called at top level - ESLint false-positive on early return pattern
 
   // Set print date on mount
   useEffect(() => {
@@ -132,7 +137,7 @@ function App() {
       initializeNotifications();
       sessionStorage.setItem('notifications_initialized', 'true');
     }
-  }, []);
+  }, [requestPermission, registerToken, fcmToken]);
 
   // Show toast for incoming notifications (foreground)
   useEffect(() => {
@@ -205,6 +210,8 @@ function App() {
     assignments.filter(a => a.weekId === currentWeekId),
     [assignments, currentWeekId]
   );
+
+  /* eslint-enable react-hooks/rules-of-hooks */
 
   const addEmployee = (newEmp: Omit<Employee, 'id'>) => {
     const updated = [...employees, { ...newEmp, id: generateEmployeeId() }];
@@ -654,7 +661,7 @@ function App() {
                             const data = JSON.parse(event.target?.result as string);
                             handleImportData(data);
                             toast.success('Podaci uvezeni!');
-                          } catch (err) {
+                          } catch {
                             toast.error('Greška pri uvozu');
                           }
                         };

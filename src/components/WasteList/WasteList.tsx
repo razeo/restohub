@@ -55,7 +55,7 @@ export function WasteList({ onClose }: WasteListProps) {
     return [];
   });
   
-  const [currentEntry, setCurrentEntry] = useState<WasteEntry>({
+  const [currentEntry, setCurrentEntry] = useState<WasteEntry>(() => ({
     id: '',
     date: formatDateToId(new Date()),
     items: [
@@ -66,7 +66,7 @@ export function WasteList({ onClose }: WasteListProps) {
     kitchenSignature: '',
     managerSignature: '',
     createdAt: Date.now(),
-  });
+  }));
   
   const [isSaved, setIsSaved] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);

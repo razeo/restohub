@@ -52,7 +52,7 @@ export function OutOfStock({ onClose }: OutOfStockProps) {
     return [];
   });
   
-  const [currentEntry, setCurrentEntry] = useState<OutOfStockEntry>({
+  const [currentEntry, setCurrentEntry] = useState<OutOfStockEntry>(() => ({
     id: '',
     date: formatDateToId(new Date()),
     sector: '',
@@ -66,7 +66,7 @@ export function OutOfStock({ onClose }: OutOfStockProps) {
     kitchenSignature: '',
     managerSignature: '',
     createdAt: Date.now(),
-  });
+  }));
   
   const [isSaved, setIsSaved] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
