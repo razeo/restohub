@@ -30,6 +30,7 @@ import { RoomService } from './components/RoomService';
 import { WasteList } from './components/WasteList';
 import { DailyMenu } from './components/DailyMenu';
 import { AllergenGuide } from './components/AllergenGuide';
+import { EmployeesPage } from './components/Employees';
 import { Login } from './components/Auth/Login';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { PermissionsProvider, usePermissionCheck } from './contexts/PermissionsContext';
@@ -497,12 +498,11 @@ function App() {
 
         {/* Employees Page */}
         {currentPage === 'employees' && (
-          <div className="flex-1 bg-slate-100 p-6 overflow-auto">
-            <div className="bg-white rounded-2xl shadow-sm p-6">
-              <h2 className="text-xl font-bold text-slate-800 mb-4">Upravljanje radnicima</h2>
-              <p className="text-slate-600">Ovdje će biti lista radnika sa mogućnošću dodavanja, uređivanja i brisanja.</p>
-            </div>
-          </div>
+          <EmployeesPage
+            employees={employees}
+            onAddEmployee={addEmployee}
+            onRemoveEmployee={removeEmployee}
+          />
         )}
 
         {/* Shifts Page */}
