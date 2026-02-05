@@ -382,6 +382,13 @@ export function ScheduleGrid({
             </p>
           </div>
         </div>
+
+        {/* Footer Message */}
+        <div className="mt-8 pt-6 border-t border-slate-200 text-center">
+          <p className="text-sm text-slate-400">
+            Made with love for Aleksandar Conference & Spa, Žabljak, Montenegro 🇲🇪
+          </p>
+        </div>
       </div>
 
       {/* Manual Assignment Modal */}
