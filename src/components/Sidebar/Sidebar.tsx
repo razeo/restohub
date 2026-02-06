@@ -8,7 +8,7 @@ import {
   Calendar, Users, Tag, FileText, Settings,
   ArrowLeftRight, Bed, Trash2, Utensils,
   AlertTriangle, X, ChevronDown, ChevronRight,
-  Search, User, LogOut, Shield
+  Search, User, LogOut, Shield, BookOpen
 } from 'lucide-react';
 import { Employee, Shift, Duty, Assignment } from '../../types/index';
 
@@ -74,6 +74,15 @@ const navigationSections = (canManageUsers: boolean, canAccessSettings: boolean)
       { id: 'roomservice', icon: <Bed size={12} />, label: 'Room Service' },
       { id: 'wastelist', icon: <Trash2 size={12} />, label: 'Otpis hrane' },
       { id: 'dailymenu', icon: <Utensils size={12} />, label: 'Dnevni meni' },
+    ],
+  },
+  {
+    id: 'menu',
+    title: '🍽️ JELOVNIK',
+    icon: <BookOpen size={14} />,
+    items: [
+      { id: 'menu', icon: <BookOpen size={12} />, label: 'Digitalna Karta' },
+      { id: 'dailymenu', icon: <Utensils size={12} />, label: 'Dnevna Ponuda' },
     ],
   },
   {

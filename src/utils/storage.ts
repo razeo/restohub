@@ -12,6 +12,7 @@ const STORAGE_KEYS = {
   ASSIGNMENTS: 'shift_scheduler_assignments',
   AI_RULES: 'shift_scheduler_ai_rules',
   TEMPLATES: 'shift_scheduler_templates',
+  MENU_ITEMS: 'restohub_menu_items',
   VERSION: 'shift_scheduler_version',
 };
 

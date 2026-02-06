@@ -31,6 +31,7 @@ import { RoomService } from './components/RoomService';
 import { WasteList } from './components/WasteList';
 import { DailyMenu } from './components/DailyMenu';
 import { AllergenGuide } from './components/AllergenGuide';
+import { MenuCard } from './components/MenuCard';
 import { EmployeesPage } from './components/Employees';
 import { ShiftsPage } from './components/Shifts';
 import { Login } from './components/Auth/Login';
@@ -41,7 +42,7 @@ import { processScheduleRequest, isAiConfigured } from './services/ai';
 import { useNotifications } from './hooks/useNotifications';
 import { isFcmConfigured, isTelegramConfigured } from './services/notifications';
 
-type PageType = 'schedule' | 'employees' | 'shifts' | 'duties' | 'templates' | 'ai' | 'handover' | 'report' | 'outofstock' | 'responsibility' | 'roomservice' | 'wastelist' | 'dailymenu' | 'allergens' | 'settings' | 'users' | 'permissions';
+type PageType = 'schedule' | 'employees' | 'shifts' | 'duties' | 'templates' | 'ai' | 'handover' | 'report' | 'outofstock' | 'responsibility' | 'roomservice' | 'wastelist' | 'dailymenu' | 'allergens' | 'menu' | 'settings' | 'users' | 'permissions';
 
 interface ImportData {
   employees?: Employee[];
@@ -509,6 +510,10 @@ function AppContent() {
 
         {currentPage === 'allergens' && (
           <AllergenGuide onClose={() => navigateTo('schedule', 'Raspored')} />
+        )}
+
+        {currentPage === 'menu' && (
+          <MenuCard onClose={() => navigateTo('schedule', 'Raspored')} />
         )}
 
         {/* Employees Page */}
