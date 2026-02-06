@@ -12,26 +12,44 @@ interface AuthContextType {
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
   hasRole: (roles: UserRole[]) => boolean;
+  refreshSession: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
-    // Inicijaliziraj default admina
-    authService.createDefaultAdmin();
+    const initAuth = async () => {
+      // Inicijaliziraj default admina
+      await authService.createDefaultAdmin();
+      
+      // Provjeri da li je korisnik već prijavljen
+      const savedUser = authService.getCurrentUser();
+      if (savedUser) {
+        setUser(savedUser);
+      }
+      setIsLoading(false);
+    };
     
-    // Provjeri da li je korisnik već prijavljen
-    const savedUser = authService.getCurrentUser();
-    if (savedUser) {
-      setUser(savedUser);
-    }
+    initAuth();
   }, []);
   
+  // Session refresh timer - produžava session svakih 5 min
+  useEffect(() => {
+    if (!user) return;
+    
+    const interval = setInterval(() => {
+      authService.refreshSession();
+    }, 5 * 60 * 1000);
+    
+    return () => clearInterval(interval);
+  }, [user]);
+  
   const login = async (username: string, password: string): Promise<boolean> => {
-    const foundUser = authService.validateUser(username, password);
+    const foundUser = await authService.validateUser(username, password);
     if (foundUser) {
       authService.login(foundUser);
       setUser(foundUser);
@@ -49,12 +67,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return authService.hasRole(user, roles);
   };
   
+  const refreshSession = () => {
+    authService.refreshSession();
+  };
+  
   const value: AuthContextType = {
     user,
-    isAuthenticated: !!user,
+    isAuthenticated: !!user && !isLoading,
     login,
     logout,
     hasRole,
+    refreshSession,
   };
   
   return (

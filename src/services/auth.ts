@@ -4,19 +4,22 @@
 
 import { User, UserRole } from '../types/users';
 import { getStorageItem, setStorageItem } from '../utils/storage';
+import bcrypt from 'bcryptjs';
 
 const USERS_KEY = 'restohub_users';
 const CURRENT_USER_KEY = 'restohub_current_user';
+const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minuta
 
 export const authService = {
-  // Hash lozinke (jednostavna implementacija za početak)
-  hashPassword(password: string): string {
-    // U produkciji koristi bcrypt
-    return btoa(password + '_restohub_salt');
+  // Hash lozinke sa bcrypt
+  async hashPassword(password: string): Promise<string> {
+    const saltRounds = 10;
+    return bcrypt.hash(password, saltRounds);
   },
   
-  verifyPassword(password: string, hash: string): boolean {
-    return this.hashPassword(password) === hash;
+  // Verifikacija lozinke
+  async verifyPassword(password: string, hash: string): Promise<boolean> {
+    return bcrypt.compare(password, hash);
   },
   
   // User CRUD
@@ -24,7 +27,7 @@ export const authService = {
     return getStorageItem<User[]>(USERS_KEY, []);
   },
   
-  createUser(user: Omit<User, 'id' | 'createdAt'>): User {
+  async createUser(user: Omit<User, 'id' | 'createdAt'>): Promise<User> {
     const users = this.getUsers();
     const newUser: User = {
       ...user,
@@ -36,22 +39,28 @@ export const authService = {
     return newUser;
   },
   
-  validateUser(username: string, password: string): User | null {
+  async validateUser(username: string, password: string): Promise<User | null> {
     const users = this.getUsers();
     const user = users.find(u => u.username === username);
     
-    if (user && this.verifyPassword(password, user.passwordHash)) {
-      // Ažuriraj lastLogin
-      user.lastLogin = Date.now();
-      setStorageItem(USERS_KEY, users);
-      return user;
+    if (user) {
+      const isValid = await this.verifyPassword(password, user.passwordHash);
+      if (isValid) {
+        // Ažuriraj lastLogin
+        user.lastLogin = Date.now();
+        setStorageItem(USERS_KEY, users);
+        return user;
+      }
     }
     return null;
   },
   
   // Session management
   login(user: User): void {
-    setStorageItem(CURRENT_USER_KEY, user);
+    setStorageItem(CURRENT_USER_KEY, {
+      ...user,
+      lastLogin: Date.now(),
+    });
   },
   
   logout(): void {
@@ -59,7 +68,16 @@ export const authService = {
   },
   
   getCurrentUser(): User | null {
-    return getStorageItem<User | null>(CURRENT_USER_KEY, null);
+    const user = getStorageItem<User | null>(CURRENT_USER_KEY, null);
+    if (!user) return null;
+    
+    // Provjeri da li je istekao session
+    if (user.lastLogin && Date.now() - user.lastLogin > SESSION_TIMEOUT) {
+      this.logout();
+      return null;
+    }
+    
+    return user;
   },
   
   isAuthenticated(): boolean {
@@ -71,13 +89,24 @@ export const authService = {
     return roles.includes(user.role);
   },
   
+  // Refresh session (poziva se pri svakom aktiviranju)
+  refreshSession(): void {
+    const user = this.getCurrentUser();
+    if (user) {
+      setStorageItem(CURRENT_USER_KEY, {
+        ...user,
+        lastLogin: Date.now(),
+      });
+    }
+  },
+  
   // Default admin korisnik
-  createDefaultAdmin(): void {
+  async createDefaultAdmin(): Promise<void> {
     const users = this.getUsers();
     if (users.length === 0) {
-      this.createUser({
+      await this.createUser({
         username: 'admin',
-        passwordHash: this.hashPassword('admin123'),
+        passwordHash: await this.hashPassword('admin123'),
         name: 'Administrator',
         role: UserRole.ADMIN,
         restaurantId: 'restaurant-1',

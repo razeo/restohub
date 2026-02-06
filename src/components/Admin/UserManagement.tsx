@@ -16,11 +16,22 @@ interface UserFormData {
   employeeId?: string;
 }
 
+// Validacija
+const validateForm = (data: UserFormData, isEditing: boolean): string | null => {
+  if (!data.name.trim()) return 'Ime je obavezno';
+  if (!data.username.trim()) return 'Korisničko ime je obavezno';
+  if (!isEditing && !data.password) return 'Lozinka je obavezna';
+  if (data.password && data.password.length < 6) return 'Lozinka mora imati najmanje 6 karaktera';
+  if (!/^[a-zA-Z0-9_]+$/.test(data.username)) return 'Korisničko ime može sadržavati samo slova, brojeve i donju crtu';
+  return null;
+};
+
 export function UserManagement() {
   const [users, setUsers] = useState<User[]>(() => authService.getUsers());
   const [searchTerm, setSearchTerm] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<UserFormData>({
     username: '',
     password: '',
@@ -34,33 +45,53 @@ export function UserManagement() {
     user.username.toLowerCase().includes(searchTerm.toLowerCase())
   );
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     
-    if (editingUser) {
-      // Ažuriraj postojećeg korisnika
-      const updatedUsers = users.map(user => 
-        user.id === editingUser.id 
-          ? { ...user, ...formData, passwordHash: formData.password ? authService.hashPassword(formData.password) : user.passwordHash }
-          : user
-      );
-      setUsers(updatedUsers);
-      toast.success('Korisnik ažuriran');
-    } else {
-      // Kreiraj novog korisnika
-      const newUser = authService.createUser({
-        username: formData.username,
-        passwordHash: authService.hashPassword(formData.password),
-        name: formData.name,
-        role: formData.role,
-        restaurantId: 'restaurant-1',
-        employeeId: formData.employeeId,
-      });
-      setUsers([...users, newUser]);
-      toast.success('Korisnik kreiran');
+    try {
+      // Validacija
+      const validationError = validateForm(formData, !!editingUser);
+      if (validationError) {
+        toast.error(validationError);
+        setIsSubmitting(false);
+        return;
+      }
+      
+      if (editingUser) {
+        // Ažuriraj postojećeg korisnika
+        const passwordHash = formData.password 
+          ? await authService.hashPassword(formData.password)
+          : editingUser.passwordHash;
+        
+        const updatedUsers = users.map(user => 
+          user.id === editingUser.id 
+            ? { ...user, username: formData.username, name: formData.name, role: formData.role, passwordHash }
+            : user
+        );
+        setUsers(updatedUsers);
+        toast.success('Korisnik ažuriran');
+      } else {
+        // Kreiraj novog korisnika
+        const newUser = await authService.createUser({
+          username: formData.username,
+          passwordHash: await authService.hashPassword(formData.password),
+          name: formData.name,
+          role: formData.role,
+          restaurantId: 'restaurant-1',
+          employeeId: formData.employeeId,
+        });
+        setUsers([...users, newUser]);
+        toast.success('Korisnik kreiran');
+      }
+      
+      resetForm();
+    } catch (error) {
+      toast.error('Došlo je do greške');
+      console.error(error);
+    } finally {
+      setIsSubmitting(false);
     }
-    
-    resetForm();
   };
   
   const handleEdit = (user: User) => {
@@ -99,6 +130,7 @@ export function UserManagement() {
     });
     setEditingUser(null);
     setShowForm(false);
+    setIsSubmitting(false);
   };
   
   return (
@@ -188,7 +220,7 @@ export function UserManagement() {
             
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Ime i prezime</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Ime i prezime *</label>
                 <input
                   type="text"
                   value={formData.name}
@@ -199,25 +231,27 @@ export function UserManagement() {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Korisničko ime</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Korisničko ime *</label>
                 <input
                   type="text"
                   value={formData.username}
                   onChange={(e) => setFormData({...formData, username: e.target.value})}
                   className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none"
+                  placeholder="samo slova, brojevi i _"
                   required
                 />
               </div>
               
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                  {editingUser ? 'Nova lozinka (ostavite prazno da ne mijenjate)' : 'Lozinka'}
+                  {editingUser ? 'Nova lozinka (ostavite prazno da ne mijenjate) *' : 'Lozinka *'}
                 </label>
                 <input
                   type="password"
                   value={formData.password}
                   onChange={(e) => setFormData({...formData, password: e.target.value})}
                   className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 outline-none"
+                  placeholder={editingUser ? 'Ostavite prazno za istu lozinku' : 'Min 6 karaktera'}
                   required={!editingUser}
                 />
               </div>
@@ -240,14 +274,16 @@ export function UserManagement() {
                   type="button"
                   onClick={resetForm}
                   className="flex-1 py-3 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors"
+                  disabled={isSubmitting}
                 >
                   Odustani
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
+                  className="flex-1 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  disabled={isSubmitting}
                 >
-                  {editingUser ? 'Sačuvaj' : 'Dodaj'}
+                  {isSubmitting ? '...' : (editingUser ? 'Sačuvaj' : 'Dodaj')}
                 </button>
               </div>
             </form>

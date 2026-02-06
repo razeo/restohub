@@ -5,10 +5,8 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: 'jsdom',
-    include: ['src/**/*.test.{ts,tsx}'],
-    coverage: {
-      provider: 'v8',
-      reporter: ['text', 'json', 'html'],
-    },
+    globals: true,
+    include: ['tests/**/*.test.{ts,tsx}'],
+    root: '.',
   },
 });
