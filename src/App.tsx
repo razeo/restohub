@@ -567,7 +567,7 @@ function AppContent() {
         )}
 
         {currentPage === 'settings' && (
-          <div className="flex-1 flex items-center justify-center bg-slate-100 p-8">
+          <div className="flex-1 flex items-center justify-center bg-slate-100 p-8 overflow-auto">
             <div className="bg-white rounded-2xl shadow-xl p-8 max-w-2xl w-full">
               <div className="flex items-center gap-4 mb-8">
                 <Settings size={32} className="text-slate-400" />
