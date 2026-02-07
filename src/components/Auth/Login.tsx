@@ -31,8 +31,9 @@ export function Login() {
   };
   
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-100">
-      <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
+    <div className="flex h-screen w-full items-center justify-center bg-slate-100 font-sans">
+      <Toaster position="top-right" />
+      <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md mx-4">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-slate-800">RestoHub</h1>
           <p className="text-slate-500 mt-2">Prijavite se na sistem</p>
