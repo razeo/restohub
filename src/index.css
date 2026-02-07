@@ -1,262 +1,41 @@
-/* RestoHub - 30% Size Reduction Global Styles */
+/* RestoHub - Minimal Size Reduction - Font Only */
+/* Keep layout intact, only reduce fonts */
 
-/* Base font size reduction */
 html {
-  font-size: 14px !important;
+  font-size: 13px !important;
 }
 
-/* Reduced padding in common components */
-body {
-  padding: 0 !important;
-  margin: 0 !important;
-}
-
-/* Login form */
-.login-container,
-.max-w-md {
-  max-width: 380px !important;
-  padding: 1.25rem !important;
-}
-
+/* Login form - only font size */
 .login-container input,
 .max-w-md input {
-  padding: 0.6rem 0.85rem !important;
-  font-size: 0.85rem !important;
+  padding: 0.65rem 0.9rem !important;
 }
 
 .login-container button,
 .max-w-md button {
-  padding: 0.6rem 1rem !important;
-  font-size: 0.85rem !important;
+  padding: 0.65rem 1rem !important;
 }
 
-/* Sidebar reduction */
+/* Sidebar - only sidebar width */
 .sidebar,
-[data-testid="sidebar"],
 .w-72,
 .w-80 {
-  width: 200px !important;
-  min-width: 200px !important;
-  padding: 0.75rem !important;
+  width: 220px !important;
+  min-width: 220px !important;
 }
 
-.sidebar .text-lg,
-.w-80 .text-lg {
+/* Header - only font */
+header h1 {
   font-size: 1.1rem !important;
 }
 
-.sidebar .text-sm,
-.w-80 .text-sm {
-  font-size: 0.75rem !important;
-}
-
-.sidebar .p-2,
-.w-80 .p-2 {
+/* Schedule - only cell padding */
+.schedule-cell {
   padding: 0.4rem !important;
 }
 
-.sidebar .p-3,
-.w-80 .p-3 {
-  padding: 0.5rem !important;
-}
-
-.sidebar .p-4,
-.w-80 .p-4 {
-  padding: 0.65rem !important;
-}
-
-/* Header reduction */
-header,
-.header {
-  padding: 0.5rem 1rem !important;
-  font-size: 0.85rem !important;
-}
-
-header h1,
-.header h1 {
-  font-size: 1.1rem !important;
-}
-
-header .text-xl,
-.header .text-xl {
-  font-size: 1rem !important;
-}
-
-/* Schedule grid reduction */
-.schedule-grid,
-.schedule-cell {
-  font-size: 0.75rem !important;
-}
-
-.schedule-grid .p-3,
-.schedule-cell .p-3 {
-  padding: 0.5rem !important;
-}
-
-.schedule-grid .p-4,
-.schedule-cell .p-4 {
-  padding: 0.6rem !important;
-}
-
-.schedule-grid .text-sm,
-.schedule-cell .text-sm {
-  font-size: 0.7rem !important;
-}
-
-.schedule-grid .text-xs,
-.schedule-cell .text-xs {
-  font-size: 0.65rem !important;
-}
-
-/* Button reduction */
-.btn,
-button {
-  padding: 0.5rem 0.85rem !important;
-  font-size: 0.8rem !important;
-  border-radius: 0.4rem !important;
-}
-
-.btn-sm {
-  padding: 0.35rem 0.65rem !important;
-  font-size: 0.75rem !important;
-}
-
-.btn-lg {
-  padding: 0.6rem 1.1rem !important;
-  font-size: 0.85rem !important;
-}
-
-/* Card/Menu reduction */
-.card,
-.bg-white.rounded-2xl,
-.bg-white.rounded-xl {
-  border-radius: 0.5rem !important;
-  padding: 1rem !important;
-}
-
-.bg-white.rounded-2xl {
-  padding: 1.25rem !important;
-}
-
-/* Table reduction */
-table {
-  font-size: 0.8rem !important;
-}
-
-table th,
-table td {
-  padding: 0.5rem 0.75rem !important;
-  font-size: 0.75rem !important;
-}
-
-/* Modal reduction */
-.modal,
-.fixed.inset-0.bg-black\/50 + div {
-  padding: 1rem !important;
-}
-
-.modal-content,
-.fixed.inset-0.bg-black\/50 + div > div {
-  max-width: 400px !important;
-  padding: 1.25rem !important;
-}
-
-/* Chat interface reduction */
-.chat-interface,
-[data-testid="chat"] {
-  font-size: 0.85rem !important;
-}
-
-.chat-interface .p-4,
-[data-testid="chat"] .p-4 {
-  padding: 0.6rem !important;
-}
-
-.chat-interface .text-sm,
-[data-testid="chat"] .text-sm {
-  font-size: 0.75rem !important;
-}
-
-/* Icon size reduction */
-.icon-sm,
-.icon-sm svg {
-  width: 14px !important;
-  height: 14px !important;
-}
-
-.icon-md,
-.icon-md svg {
-  width: 18px !important;
-  height: 18px !important;
-}
-
-.icon-lg,
-.icon-lg svg {
-  width: 22px !important;
-  height: 22px !important;
-}
-
-/* Badge/Tag reduction */
-.badge,
-.px-2\.py-0\.5,
-.px-3.py-1 {
-  padding: 0.2rem 0.5rem !important;
-  font-size: 0.65rem !important;
-}
-
-/* Gap reduction */
-.gap-2 {
-  gap: 0.4rem !important;
-}
-
-.gap-3 {
-  gap: 0.5rem !important;
-}
-
-.gap-4 {
-  gap: 0.75rem !important;
-}
-
-.gap-6 {
-  gap: 1rem !important;
-}
-
-/* Form input reduction */
-input,
-select,
-textarea {
-  padding: 0.5rem 0.75rem !important;
-  font-size: 0.85rem !important;
-  border-radius: 0.35rem !important;
-}
-
-/* Select dropdown reduction */
-select {
-  padding: 0.45rem 0.65rem !important;
-  font-size: 0.8rem !important;
-}
-
-/* Print styles - also reduced */
-@media print {
-  .print\:p-4 {
-    padding: 0.75rem !important;
-  }
-  
-  .print\:text-lg {
-    font-size: 1rem !important;
-  }
-}
-
-/* Scrollbar reduction */
+/* Scrollbar - smaller */
 ::-webkit-scrollbar {
-  width: 6px !important;
-  height: 6px !important;
-}
-
-::-webkit-scrollbar-thumb {
-  border-radius: 3px !important;
-}
-
-::-webkit-scrollbar-track {
-  border-radius: 3px !important;
+  width: 8px !important;
+  height: 8px !important;
 }
