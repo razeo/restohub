@@ -6,18 +6,6 @@ export default {
   ],
   theme: {
     extend: {
-      // Only font size reduction
-      fontSize: {
-        'xs': ['0.7rem', { lineHeight: '1rem' }],
-        'sm': ['0.8rem', { lineHeight: '1.25rem' }],
-        'base': ['0.9rem', { lineHeight: '1.5rem' }],
-        'lg': ['1rem', { lineHeight: '1.5rem' }],
-        'xl': ['1.15rem', { lineHeight: '1.5rem' }],
-        '2xl': ['1.3rem', { lineHeight: '1.4rem' }],
-        '3xl': ['1.5rem', { lineHeight: '1.3rem' }],
-        '4xl': ['1.75rem', { lineHeight: '1.2rem' }],
-        '5xl': ['2rem', { lineHeight: '1.1rem' }],
-      },
       colors: {
         primary: {
           50: '#f0f9ff',
