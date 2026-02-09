@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <!-- Background circle -->
+  <circle cx="100" cy="100" r="90" fill="#f1f5f9" class="dark:fill-slate-800"/>
+  
+  <!-- Empty tray/plate -->
+  <ellipse cx="100" cy="120" rx="70" ry="25" fill="#94a3b8" class="dark:fill-slate-600"/>
+  <ellipse cx="100" cy="115" rx="60" ry="20" fill="#f8fafc" class="dark:fill-slate-700"/>
+  <ellipse cx="100" cy="110" rx="50" ry="15" fill="#e2e8f0" class="dark:fill-slate-600"/>
+  
+  <!-- Tray handles -->
+  <rect x="20" y="105" width="15" height="20" rx="4" fill="#64748b" class="dark:fill-slate-500"/>
+  <rect x="165" y="105" width="15" height="20" rx="4" fill="#64748b" class="dark:fill-slate-500"/>
+  
+  <!-- Cover/dome (lifted off) -->
+  <path d="M60 90 C60 60 75 45 100 45 C125 45 140 60 140 90" stroke="#94a3b8" stroke-width="3" fill="none" class="dark:stroke-slate-600"/>
+  <line x1="100" y1="35" x2="100" y2="50" stroke="#64748b" stroke-width="3" class="dark:stroke-slate-500"/>
+  <ellipse cx="100" cy="45" rx="10" ry="6" fill="#94a3b8" class="dark:fill-slate-600"/>
+  
+  <!-- Steam/empty indicator -->
+  <g class="animate-pulse">
+    <path d="M85 70 Q80 60 85 50" stroke="#cbd5e1" stroke-width="2" fill="none" class="dark:stroke-slate-600"/>
+    <path d="M100 70 Q95 55 100 45" stroke="#cbd5e1" stroke-width="2" fill="none" class="dark:stroke-slate-600"/>
+    <path d="M115 70 Q110 60 115 50" stroke="#cbd5e1" stroke-width="2" fill="none" class="dark:stroke-slate-600"/>
+  </g>
+  
+  <!-- Empty badge -->
+  <circle cx="155" cy="50" r="20" fill="#f59e0b" class="dark:bg-amber-500"/>
+  <text x="155" y="57" text-anchor="middle" fill="white" font-size="24" font-weight="bold" font-family="sans-serif">?</text>
+  
+  <!-- Decorative elements -->
+  <circle cx="40" cy="160" r="5" fill="#cbd5e1" class="dark:fill-slate-700"/>
+  <circle cx="55" cy="170" r="3" fill="#e2e8f0" class="dark:fill-slate-600"/>
+  <circle cx="165" cy="155" r="4" fill="#cbd5e1" class="dark:fill-slate-700"/>
+  <circle cx="150" cy="165" r="3" fill="#e2e8f0" class="dark:fill-slate-600"/>
+</svg>

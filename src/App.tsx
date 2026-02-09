@@ -3,7 +3,7 @@
 // RestoHub - Restaurant Management System
 // ===========================================
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
 import { Menu, Settings, Bell, Upload, Download, FileText, RotateCcw, Calendar } from 'lucide-react';
 import { STORAGE_KEYS, runMigrations, getStorageItem, setStorageItem, clearAllStorage } from './utils/storage';
@@ -41,6 +41,7 @@ import { UserManagement, PermissionsEditor } from './components/Admin';
 import { processScheduleRequest, isAiConfigured } from './services/ai';
 import { useNotifications } from './hooks/useNotifications';
 import { isFcmConfigured, isTelegramConfigured } from './services/notifications';
+import { SkeletonLoader, SkeletonTable } from './components/Loading';
 
 type PageType = 'schedule' | 'employees' | 'shifts' | 'duties' | 'templates' | 'ai' | 'handover' | 'report' | 'outofstock' | 'responsibility' | 'roomservice' | 'wastelist' | 'dailymenu' | 'allergens' | 'menu' | 'settings' | 'users' | 'permissions';
 
@@ -105,6 +106,7 @@ function AppContent() {
   const [breadcrumbs, setBreadcrumbs] = useState<{label: string; onClick?: () => void}[]>([
     { label: 'Raspored' }
   ]);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [employees, setEmployees] = useState<Employee[]>(() =>
     getStorageItem(STORAGE_KEYS.EMPLOYEES, INITIAL_EMPLOYEES)
   );
@@ -126,6 +128,21 @@ function AppContent() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+
+  // Initialize data loading
+  useEffect(() => {
+    // Simulate initial data loading from localStorage
+    const loadInitialData = async () => {
+      try {
+        // Small delay to show skeleton animation
+        await new Promise(resolve => setTimeout(resolve, 300));
+        // Data is already loaded via useState initializers
+      } finally {
+        setIsInitialLoading(false);
+      }
+    };
+    loadInitialData();
+  }, []);
 
   // Computed values
   const currentWeekId = useMemo(() => formatDateToId(currentWeekStart), [currentWeekStart]);
@@ -197,7 +214,7 @@ function AppContent() {
   if (!user) {
     return (
       <div className="flex h-screen bg-slate-100 overflow-hidden font-sans">
-        <Toaster position="top-right" />
+        <Toaster position="top-center" />
         <Login />
       </div>
     );
@@ -421,7 +438,7 @@ function AppContent() {
   
   return (
     <div className="flex h-screen bg-slate-100 overflow-hidden font-sans">
-      <Toaster position="top-right" />
+      <Toaster position="top-center" />
       
       <div 
         className={`fixed lg:static inset-y-0 left-0 z-50 transition-all duration-300 ease-in-out bg-white ${
