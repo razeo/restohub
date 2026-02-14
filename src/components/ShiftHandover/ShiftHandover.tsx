@@ -3,14 +3,47 @@
 // Primopredaja smjene - Continuity Log
 // ===========================================
 
-import { useState, useRef, useEffect } from 'react';
-import { Printer, Save, RotateCcw, Check, X, FileText, ArrowLeft } from 'lucide-react';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { Printer, Save, RotateCcw, Check, X, FileText, ArrowLeft, Clock, ArrowRight, ChefHat, Wine } from 'lucide-react';
 import { formatDateToId } from '../../utils/date';
+
+// Types from OutOfStock
+interface OutOfStockItem {
+  id: number;
+  item: string;
+  reason: 'nabavka' | 'kvalitet' | 'priprema';
+  alternative: string;
+  time86: string;
+  returnTime: string;
+  notes: string;
+}
+
+interface OutOfStockEntry {
+  id: string;
+  date: string;
+  sector: string;
+  responsible: string;
+  items: OutOfStockItem[];
+  archived: boolean;
+  archivedAt?: number;
+}
+
+// Config for rendering
+const reasonConfig = {
+  nabavka: { label: 'Nabavka', color: 'bg-blue-100 text-blue-700 border-blue-200' },
+  kvalitet: { label: 'Kvalitet', color: 'bg-red-100 text-red-700 border-red-200' },
+  priprema: { label: 'Priprema', color: 'bg-yellow-100 text-yellow-700 border-yellow-200' }
+};
+
+const sectorConfig = {
+  'Kuhinja': { label: 'Kuhinja', color: 'bg-orange-100 text-orange-700 border-orange-200' },
+  'Bar': { label: 'Bar', color: 'bg-purple-100 text-purple-700 border-purple-200' }
+};
 
 interface HandoverEntry {
   id: string;
   date: string;
-  fromShift: 'I' | 'II';
+  fromShift: string;
   fromManager: string;
   toManager: string;
   
@@ -64,7 +97,7 @@ export function ShiftHandover({ onClose }: ShiftHandoverProps) {
   const [currentEntry, setCurrentEntry] = useState<HandoverEntry>(() => ({
     id: '',
     date: formatDateToId(new Date()),
-    fromShift: 'I',
+    fromShift: 'JUTARNJA',
     fromManager: '',
     toManager: '',
     reservedTables: '',
@@ -88,6 +121,7 @@ export function ShiftHandover({ onClose }: ShiftHandoverProps) {
   }));
   
   const [isSaved, setIsSaved] = useState(false);
+  const [importedMissingItems, setImportedMissingItems] = useState<Array<OutOfStockItem & { sector: string; date: string }>>([]);
   const printRef = useRef<HTMLDivElement>(null);
 
   // Load today's entry if exists
@@ -126,7 +160,7 @@ export function ShiftHandover({ onClose }: ShiftHandoverProps) {
     setCurrentEntry({
       id: '',
       date: formatDateToId(new Date()),
-      fromShift: currentEntry.fromShift === 'I' ? 'II' : 'I',
+      fromShift: currentEntry.fromShift === 'JUTARNJA' ? 'VECERNJA' : 'JUTARNJA',
       fromManager: '',
       toManager: '',
       reservedTables: '',
@@ -227,8 +261,8 @@ export function ShiftHandover({ onClose }: ShiftHandoverProps) {
                 onChange={(e) => handleInputChange('fromShift', e.target.value)}
                 className="input"
               >
-                <option value="I">I (06:00 - 14:00)</option>
-                <option value="II">II (14:00 - 22:00)</option>
+                <option value="JUTARNJA">Jutarnja (07:00 - 15:00)</option>
+                <option value="VECERNJA">Večernja (15:00 - 23:00)</option>
               </select>
             </div>
             <div>
@@ -243,10 +277,150 @@ export function ShiftHandover({ onClose }: ShiftHandoverProps) {
             </div>
           </div>
 
-          {/* Two Column Layout */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          {/* Sections - Stacked */}
+          <div className="grid grid-cols-1 gap-6 mb-6">
             
-            {/* Finance & Documentation */}
+            {/* Inventory & Technical - FIRST */}
+            <div className="border border-slate-200 rounded-lg p-4">
+              <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                <FileText size={16} /> Inventar i Tehnika
+              </h3>
+              
+              <div className="space-y-3">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-xs text-slate-600 font-medium">Nedostajući artikli (86)</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        try {
+                          const stored = localStorage.getItem('outofstock_entries');
+                          if (stored) {
+                            const allEntries: OutOfStockEntry[] = JSON.parse(stored);
+                            // Get all non-archived items with full info for cards
+                            const activeItems = allEntries
+                              .filter((e: OutOfStockEntry) => !e.archived && e.items)
+                              .flatMap((e: OutOfStockEntry) => 
+                                e.items
+                                  .filter((it: OutOfStockItem) => it.item && it.item.trim())
+                                  .map((it: OutOfStockItem) => ({
+                                    ...it,
+                                    sector: e.sector,
+                                    date: e.date
+                                  }))
+                              );
+                            
+                            if (activeItems.length > 0) {
+                              setImportedMissingItems(activeItems);
+                              // Also update the text field for backward compatibility
+                              const itemsStr = activeItems.map((it: OutOfStockItem & { sector: string; date: string }) => {
+                                return `${it.item} [${it.date}] (${it.sector})`;
+                              }).join('\n');
+                              handleInputChange('missingItems', itemsStr);
+                            } else {
+                              alert('Nema aktivnih nedostajućih artikala. Svi su arhivirani ili nema unesenih artikala.');
+                            }
+                          }
+                        } catch (e) {
+                          console.error('Error loading outofstock:', e);
+                          alert('Greška pri učitavanju artikala.');
+                        }
+                      }}
+                      className="text-xs text-blue-600 hover:text-blue-800 font-medium bg-blue-50 px-2 py-1 rounded"
+                    >
+                      +86 Uvezi artikle
+                    </button>
+                  </div>
+                  
+                  {/* Cards umjesto textarea */}
+                  {importedMissingItems.length > 0 ? (
+                    <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                      {importedMissingItems.map((item, idx) => {
+                        const sectorInfo = sectorConfig[item.sector as keyof typeof sectorConfig] || { label: item.sector, color: 'bg-slate-100 text-slate-700' };
+                        const reasonInfo = reasonConfig[item.reason] || reasonConfig.nabavka;
+                        
+                        return (
+                          <div key={idx} className="bg-white rounded-lg border border-slate-200 p-3 hover:shadow-sm">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className={`px-2 py-0.5 rounded text-xs font-medium border ${sectorInfo.color}`}>
+                                {item.sector}
+                              </span>
+                              <span className={`px-2 py-0.5 rounded text-xs font-medium border ${reasonInfo.color}`}>
+                                {reasonInfo.label}
+                              </span>
+                              <span className="text-xs text-slate-400">{item.date}</span>
+                              {item.time86 && <span className="text-xs text-slate-400">@ {item.time86}</span>}
+                            </div>
+                            <h4 className="font-bold text-slate-800 mb-1">{item.item}</h4>
+                            {item.alternative && (
+                              <div className="flex items-center gap-1 text-sm text-green-600">
+                                <ArrowRight size={14} />
+                                <span className="font-medium">Zamjena:</span>
+                                <span>{item.alternative}</span>
+                              </div>
+                            )}
+                            {item.notes && (
+                              <div className="text-sm text-slate-600 mt-1 bg-slate-50 p-2 rounded">
+                                <span className="font-medium">Napomena:</span> {item.notes}
+                              </div>
+                            )}
+                            {item.returnTime && (
+                              <div className="text-xs text-slate-500 mt-1">
+                                Povratak: {item.returnTime}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-slate-400 bg-slate-50 p-4 rounded-lg text-center">
+                      Klikni "+86 Uvezi artikle" za prikaz nedostajućih artikala
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-600 mb-1">Tehnički kvarovi</label>
+                  <input
+                    type="text"
+                    value={currentEntry.technicalIssues}
+                    onChange={(e) => handleInputChange('technicalIssues', e.target.value)}
+                    className="input"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-600 mb-1">Potrebna dopuna (Bar/Kuhinja)</label>
+                  <input
+                    type="text"
+                    value={currentEntry.restockNeeded}
+                    onChange={(e) => handleInputChange('restockNeeded', e.target.value)}
+                    className="input"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="inventoryChecked"
+                    checked={currentEntry.inventoryChecked}
+                    onChange={(e) => handleInputChange('inventoryChecked', e.target.checked)}
+                    className="w-4 h-4"
+                  />
+                  <label htmlFor="inventoryChecked" className="text-sm">Provjera sitnog inventara</label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="cleanlinessOk"
+                    checked={currentEntry.cleanlinessOk}
+                    onChange={(e) => handleInputChange('cleanlinessOk', e.target.checked)}
+                    className="w-4 h-4"
+                  />
+                  <label htmlFor="cleanlinessOk" className="text-sm">Čistoća radnih stanica</label>
+                </div>
+              </div>
+            </div>
+
+            {/* Finance & Documentation - SECOND */}
             <div className="border border-slate-200 rounded-lg p-4">
               <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
                 <FileText size={16} /> Finansije i Dokumentacija
@@ -301,63 +475,6 @@ export function ShiftHandover({ onClose }: ShiftHandoverProps) {
                     onChange={(e) => handleInputChange('otherDocs', e.target.value)}
                     className="input"
                   />
-                </div>
-              </div>
-            </div>
-
-            {/* Inventory & Technical */}
-            <div className="border border-slate-200 rounded-lg p-4">
-              <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
-                <FileText size={16} /> Inventar i Tehnika
-              </h3>
-              
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-xs text-slate-600 mb-1">Nedostajući artikli</label>
-                  <input
-                    type="text"
-                    value={currentEntry.missingItems}
-                    onChange={(e) => handleInputChange('missingItems', e.target.value)}
-                    className="input"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-slate-600 mb-1">Tehnički kvarovi</label>
-                  <input
-                    type="text"
-                    value={currentEntry.technicalIssues}
-                    onChange={(e) => handleInputChange('technicalIssues', e.target.value)}
-                    className="input"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-slate-600 mb-1">Potrebna dopuna (Bar/Kuhinja)</label>
-                  <input
-                    type="text"
-                    value={currentEntry.restockNeeded}
-                    onChange={(e) => handleInputChange('restockNeeded', e.target.value)}
-                    className="input"
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="inventoryChecked"
-                    checked={currentEntry.inventoryChecked}
-                    onChange={(e) => handleInputChange('inventoryChecked', e.target.checked)}
-                    className="w-4 h-4"
-                  />
-                  <label htmlFor="inventoryChecked" className="text-sm">Provjera sitnog inventara</label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="cleanlinessOk"
-                    checked={currentEntry.cleanlinessOk}
-                    onChange={(e) => handleInputChange('cleanlinessOk', e.target.checked)}
-                    className="w-4 h-4"
-                  />
-                  <label htmlFor="cleanlinessOk" className="text-sm">Čistoća radnih stanica</label>
                 </div>
               </div>
             </div>
