@@ -6,19 +6,30 @@
 import { ScheduleState, AIResponse, ALL_DAYS } from '../types/index';
 
 // MiniMax API Configuration
-const MINIMAX_API_BASE = 'https://api.minimax.chat/v1/text/chatcompletion_v2';
+const MINIMAX_API_BASE = 'https://api.minimaxi.chat/v1/text/chatcompletion_v2';
 
 // Get MiniMax API key from environment
 const getMinimaxApiKey = (): string => import.meta.env.VITE_MINIMAX_API_KEY || '';
 
 const cleanJsonOutput = (text: string): string => {
-  let cleaned = text.trim();
-  if (cleaned.startsWith('```json')) {
-    cleaned = cleaned.replace(/^```json/, '').replace(/```$/, '');
-  } else if (cleaned.startsWith('```')) {
-    cleaned = cleaned.replace(/^```/, '').replace(/```$/, '');
+  try {
+    // Attempt to find JSON block in markdown
+    const markdownRegex = /```json\s*([\s\S]*?)\s*```/g;
+    const match = markdownRegex.exec(text);
+    if (match && match[1]) {
+      return match[1].trim();
+    }
+
+    // fallback: find everything between first { and last }
+    const firstBrace = text.indexOf('{');
+    const lastBrace = text.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      return text.substring(firstBrace, lastBrace + 1).trim();
+    }
+  } catch (e) {
+    console.error('Error cleaning JSON output:', e);
   }
-  return cleaned.trim();
+  return text.trim();
 };
 
 export const processScheduleRequest = async (
@@ -41,29 +52,40 @@ export const processScheduleRequest = async (
     availability: e.availability || ALL_DAYS
   }));
 
-  const systemMessage = `Ti si RestoHub AI, precizan algoritam za raspoređivanje osoblja u restoranu.
+  const systemMessage = `Ti si RestoHub AI, stručnjak za optimizaciju radne snage u ugostiteljstvu.
+Tvoj zadatak je da kreiraš ili ažuriraš raspored radnika na osnovu upita korisnika, poštujući stroga pravila.
 
-CILJ: Generiši ili ažuriraj JSON objekat koji predstavlja raspored smjena.
-
-PRIORITET 1: KORISNIČKA PRAVILA (OBAVEZNO)
-${currentState.aiRules || 'Nema posebnih pravila.'}
-
-PRIORITET 2: OGRANIČENJA
-- Dostupnost: Radnik se NE SMIJE dodijeliti smjeni ako dan nije u availability listi.
-- Uloge: Poštuj uloge (Chef, Bartender, Server, itd.)
-
-PRIORITET 3: KONTEKST
+Dostupni podaci:
 - Radnici: ${JSON.stringify(employeesWithAvailability)}
 - Smjene: ${JSON.stringify(currentState.shifts)}
 - Trenutni raspored: ${JSON.stringify(currentState.assignments)}
 - Dozvoljene dužnosti: [${allowedDuties}]
 - Trenutna sedmica: ${currentState.currentWeekId}
 
-IZLAZ (SAMO JSON, bez markdown):
+Glavna pravila:
+1. ${currentState.aiRules || 'Pridržavaj se standardnih pravila ugostiteljstva.'}
+2. Radnik se NE SMIJE dodijeliti smjeni ako dan smjene nije u njegovoj listi 'availability'.
+3. 'shiftId' i 'employeeId' u tvom odgovoru MORAJU biti tačno oni koji su ti dati u kontekstu. Ne izmišljaj nove ID-jeve osim ako korisnik ne traži novog radnika.
+4. 'specialDuty' mora biti jedna od dozvoljenih dužnosti: [${allowedDuties}].
+
+VAŽNO: Odgovori ISKLJUČIVO validnim JSON objektom. Bez uvodnog teksta, bez objašnjenja van JSON-a.
+Odgovor MORA imati sljedeću strukturu:
 {
-  "message": "Objašnjenje na srpskom/hrvatskom šta je urađeno",
-  "newAssignments": [{"shiftId": "id", "employeeId": "id", "specialDuty": "duty"}],
-  "employeesToAdd": [{"name": "Ime", "role": "Uloga"}]
+  "message": "Kratko objašnjenje na srpskom/hrvatskom šta si uradio",
+  "newAssignments": [
+    {
+      "shiftId": "string (obavezan)",
+      "employeeId": "string (obavezan)",
+      "specialDuty": "string (opciono, npr. 'Glavni kuvar')",
+      "day": "DayOfWeek (npr. 'Monday')"
+    }
+  ],
+  "employeesToAdd": [
+    {
+      "name": "string",
+      "role": "Role (Bartender, Chef, Server, Host, Manager, Other)"
+    }
+  ]
 }`;
 
   try {
@@ -74,7 +96,7 @@ IZLAZ (SAMO JSON, bez markdown):
         'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'abab6.5s-chat',
+        model: 'MiniMax-M2.5',
         messages: [
           { role: 'system', content: systemMessage },
           { role: 'user', content: prompt }
@@ -92,30 +114,62 @@ IZLAZ (SAMO JSON, bez markdown):
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       console.error('MiniMax API Error:', response.status, errorData);
-      throw new Error(`API greška (${response.status}): ${(errorData as Record<string, { msg?: string }>).base_resp?.msg || 'Nepoznata greška'}`);
+      throw new Error(`API greška (${response.status}): ${(errorData as any).base_resp?.msg || (errorData as any).message || 'Nepoznata greška'}`);
     }
 
     const data = await response.json();
-    
+
     if (signal?.aborted) {
       throw new Error('AbortError');
     }
 
-    // Parse MiniMax response
-    const choices = (data as Record<string, unknown>).choices as Array<{ message?: { content?: string } }> | undefined;
-    const content = choices?.[0]?.message?.content || '';
+    // Try multiple formats for MiniMax response
+    let content = '';
+
+    // Format 1: OpenAI style
+    if (data.choices?.[0]?.message?.content) {
+      content = data.choices[0].message.content;
+    }
+    // Format 2: Older MiniMax/Anthropic-like style
+    else if (data.content?.[0]?.text) {
+      content = data.content[0].text;
+    }
+    // Format 3: Direct content
+    else if (data.reply) {
+      content = data.reply;
+    }
+
+    if (!content) {
+      throw new Error(`AI je vratio odgovor bez sadržaja. (Status: ${response.status})`);
+    }
+
     const cleanedText = cleanJsonOutput(content);
 
     try {
       const parsed = JSON.parse(cleanedText);
+
+      // Basic Validation
+      if (typeof parsed !== 'object' || parsed === null) throw new Error('Invalid JSON structure');
+
+      const message = parsed.message || 'Raspored je ažuriran.';
+      const newAssignmentsRaw = Array.isArray(parsed.newAssignments) ? parsed.newAssignments : [];
+      const newEmployees = Array.isArray(parsed.employeesToAdd) ? parsed.employeesToAdd : [];
+
+      // Validate IDs and integrity
+      const validAssignments = newAssignmentsRaw.filter((a: any) => {
+        const hasShift = currentState.shifts.some(s => s.id === a.shiftId);
+        const hasEmployee = currentState.employees.some(e => e.id === a.employeeId);
+        return hasShift && hasEmployee && a.day;
+      });
+
       return {
-        message: parsed.message || 'Raspored je generisan.',
-        assignments: parsed.newAssignments || [],
-        newEmployees: parsed.employeesToAdd || [],
+        message,
+        assignments: validAssignments,
+        newEmployees,
       };
-    } catch {
-      console.error('JSON Parse Error. Raw:', content);
-      throw new Error('Format odgovora nije ispravan. Pokušajte ponovo.');
+    } catch (parseError) {
+      console.error('JSON Parse Error:', cleanedText, parseError);
+      throw new Error(`AI je vratio neispravan format. Tekst: ${cleanedText.substring(0, 50)}...`);
     }
   } catch (error) {
     if (error instanceof Error && (error.name === 'AbortError' || error.message === 'AbortError')) {
@@ -136,9 +190,9 @@ export const isAiConfigured = (): boolean => {
 export const getAiStatus = (): { configured: boolean; message: string } => {
   const key = getMinimaxApiKey();
   if (!key) {
-    return { 
-      configured: false, 
-      message: 'MiniMax API ključ nije podešen. Dodajte VITE_MINIMAX_API_KEY u .env.local' 
+    return {
+      configured: false,
+      message: 'MiniMax API ključ nije podešen. Dodajte VITE_MINIMAX_API_KEY u .env.local'
     };
   }
   return { configured: true, message: 'AI je spreman za korištenje.' };
