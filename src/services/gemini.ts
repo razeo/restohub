@@ -50,7 +50,9 @@ export const processScheduleRequest = async (
   const simplifiedAssignments = currentState.assignments.map(a => ({
     shiftId: a.shiftId,
     employeeId: a.employeeId,
-    specialDuty: a.specialDuty
+    dutyIds: a.dutyIds,
+    zoneIds: a.zoneIds,
+    specialDutyIds: a.specialDutyIds
   }));
 
   const systemInstruction = `Ti si RestoHub AI, precizan algoritam za raspoređivanje osoblja u restoranu.
@@ -79,7 +81,15 @@ INSTRUKCIJE ZA IZLAZ:
 2. Vrati SAMO validan JSON (bez markdown), sa ovom strukturom:
 {
   "message": "Objašnjenje na srpskom šta je urađeno",
-  "newAssignments": [{"shiftId": "id", "employeeId": "id", "specialDuty": "duty"}],
+  "newAssignments": [
+    {
+      "shiftId": "id", 
+      "employeeId": "id", 
+      "dutyIds": ["id"], 
+      "zoneIds": ["id"], 
+      "specialDutyIds": ["id"]
+    }
+  ],
   "employeesToAdd": [{"name": "Ime", "role": "Uloga"}]
 }
 

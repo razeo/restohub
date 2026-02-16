@@ -2,11 +2,13 @@ import { useState, useMemo, useCallback } from 'react';
 import { useEmployees } from './useEmployees';
 import { useShifts } from './useShifts';
 import { useDuties } from './useDuties';
+import { useZones } from './useZones';
+import { useSpecialDuties } from './useSpecialDuties';
 import { useAssignments } from './useAssignments';
 import { STORAGE_KEYS, getStorageItem, setStorageItem, clearAllStorage } from '../utils/storage';
 import { getMonday, formatDateToId, addWeeks } from '../utils/date';
 import { ChatMessage, ScheduleState } from '../types';
-import { DEFAULT_AI_RULES, INITIAL_EMPLOYEES, INITIAL_SHIFTS, INITIAL_DUTIES } from '../data/initialData';
+import { DEFAULT_AI_RULES, INITIAL_EMPLOYEES, INITIAL_SHIFTS, INITIAL_DUTIES, INITIAL_ZONES, INITIAL_SPECIAL_DUTIES } from '../data/initialData';
 import { toast } from 'react-hot-toast';
 
 export function useScheduleState() {
@@ -15,7 +17,9 @@ export function useScheduleState() {
 
     const { employees, setEmployees, addEmployee, removeEmployee, updateEmployee } = useEmployees();
     const { shifts, setShifts, addShift, addShifts, removeShift, updateShift } = useShifts();
-    const { duties, setDuties, addDuty, removeDuty } = useDuties();
+    const { duties, setDuties, addDuty, removeDuty, updateDuty } = useDuties();
+    const { zones, setZones, addZone, removeZone, updateZone } = useZones();
+    const { specialDuties, setSpecialDuties, addSpecialDuty, removeSpecialDuty, updateSpecialDuty } = useSpecialDuties();
     const { assignments, setAssignments, removeAssignment, manualAssign, clearAssignmentsForEmployee, clearAssignmentsForShift } = useAssignments(currentWeekId);
 
     const [aiRules, setAiRules] = useState<string>(() =>
@@ -42,12 +46,14 @@ export function useScheduleState() {
             setEmployees(INITIAL_EMPLOYEES);
             setShifts(INITIAL_SHIFTS);
             setDuties(INITIAL_DUTIES);
+            setZones(INITIAL_ZONES);
+            setSpecialDuties(INITIAL_SPECIAL_DUTIES);
             setAiRules(DEFAULT_AI_RULES);
             setAssignments([]);
             setChatMessages([]);
             toast.success('Svi podaci su resetovani');
         }
-    }, [setEmployees, setShifts, setDuties, setAssignments]);
+    }, [setEmployees, setShifts, setDuties, setZones, setSpecialDuties, setAssignments]);
 
     const handleRemoveEmployee = useCallback((id: string) => {
         removeEmployee(id);
@@ -64,9 +70,11 @@ export function useScheduleState() {
         shifts,
         assignments,
         duties,
+        zones,
+        specialDuties,
         currentWeekId,
         aiRules,
-    }), [employees, shifts, assignments, duties, currentWeekId, aiRules]);
+    }), [employees, shifts, assignments, duties, zones, specialDuties, currentWeekId, aiRules]);
 
     return {
         employees,
@@ -90,6 +98,15 @@ export function useScheduleState() {
         updateShift,
         addDuty,
         removeDuty,
+        updateDuty,
+        zones,
+        addZone,
+        removeZone,
+        updateZone,
+        specialDuties,
+        addSpecialDuty,
+        removeSpecialDuty,
+        updateSpecialDuty,
         manualAssign,
         removeAssignment,
         navigateWeek,
@@ -98,5 +115,7 @@ export function useScheduleState() {
         setEmployees,
         setShifts,
         setDuties,
+        setZones,
+        setSpecialDuties,
     };
 }
