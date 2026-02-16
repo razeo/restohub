@@ -52,8 +52,22 @@ export interface Employee {
 export interface Duty {
   id: string;
   label: string;
-  color?: string;
-  icon?: string;
+  color: string;
+  description?: string;
+}
+
+export interface Zone {
+  id: string;
+  label: string;
+  color: string;
+  description?: string;
+}
+
+export interface SpecialDuty {
+  id: string;
+  label: string;
+  color: string;
+  description?: string;
 }
 
 export interface Shift {
@@ -72,7 +86,9 @@ export interface Assignment {
   employeeId: string;
   weekId: string;    // ISO week format or Monday's YYYY-MM-DD
   day: DayOfWeek;    // Day of the week for this specific assignment
-  specialDuty?: string;
+  dutyIds?: string[]; // Associated duties from INITIAL_DUTIES
+  zoneIds?: string[]; // Associated zones from INITIAL_ZONES
+  specialDutyIds?: string[]; // Associated special duties from INITIAL_SPECIAL_DUTIES
   notes?: string;
 }
 
