@@ -29,14 +29,15 @@ const SHIFT_COLORS = [
 interface ShiftsPageProps {
   shifts: Shift[];
   onAddShift: (shift: Omit<Shift, 'id'>) => void;
+  onAddShifts: (shifts: Omit<Shift, 'id'>[]) => void;
   onRemoveShift: (id: string) => void;
   onUpdateShift: (shift: Shift) => void;
 }
 
-export function ShiftsPage({ shifts, onAddShift, onRemoveShift, onUpdateShift }: ShiftsPageProps) {
+export function ShiftsPage({ shifts, onAddShift, onAddShifts, onRemoveShift, onUpdateShift }: ShiftsPageProps) {
   const [showModal, setShowModal] = useState(false);
   const [editingShift, setEditingShift] = useState<Shift | null>(null);
-  
+
   const [formData, setFormData] = useState({
     day: DayOfWeek.MONDAY,
     startTime: '08:00',
@@ -91,18 +92,23 @@ export function ShiftsPage({ shifts, onAddShift, onRemoveShift, onUpdateShift }:
         ...formData,
       });
     } else if (formData.replicateToAllDays) {
-      // Add shift to all days
-      DAYS.forEach(dayConfig => {
-        onAddShift({
-          day: dayConfig.value,
-          startTime: formData.startTime,
-          endTime: formData.endTime,
-          label: formData.label,
-          color: formData.color,
-        });
-      });
+      // Add shift to all days using the new batch function
+      const batchShifts = DAYS.map(dayConfig => ({
+        day: dayConfig.value,
+        startTime: formData.startTime,
+        endTime: formData.endTime,
+        label: formData.label,
+        color: formData.color,
+      }));
+      onAddShifts(batchShifts);
     } else {
-      onAddShift(formData);
+      onAddShift({
+        day: formData.day,
+        startTime: formData.startTime,
+        endTime: formData.endTime,
+        label: formData.label,
+        color: formData.color,
+      });
     }
     closeModal();
   };
@@ -113,15 +119,18 @@ export function ShiftsPage({ shifts, onAddShift, onRemoveShift, onUpdateShift }:
   };
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-8 lg:p-12 space-y-10 bg-slate-50/50 min-h-full">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">Smjene</h2>
-          <p className="text-slate-500">{shifts.length} smjena definisano</p>
+          <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">Radne smjene</h2>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1 flex items-center gap-2">
+            <Clock size={12} className="text-primary-600" />
+            Konfiguracija radnog vremena i šablona
+          </p>
         </div>
         <button
           onClick={() => openAddModal()}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          className="flex items-center justify-center gap-2 px-6 py-3 bg-primary-900 text-white rounded-xl shadow-premium hover:scale-105 active:scale-95 transition-all font-bold text-sm"
         >
           <Plus size={18} />
           Nova smjena
@@ -129,213 +138,230 @@ export function ShiftsPage({ shifts, onAddShift, onRemoveShift, onUpdateShift }:
       </div>
 
       {/* Shifts by Day */}
-      <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {shiftsByDay.map(dayConfig => (
-          <div key={dayConfig.value} className="bg-white rounded-xl shadow-sm overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-b">
+          <div key={dayConfig.value} className="bg-white rounded-3xl shadow-soft border border-slate-200/50 overflow-hidden flex flex-col hover:shadow-premium transition-all">
+            <div className="flex items-center justify-between px-6 py-4 bg-slate-50/50 border-b border-slate-100">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-slate-600">{dayConfig.label}</span>
-                <span className="text-xs text-slate-400">({dayConfig.shifts.length})</span>
+                <span className="text-xs font-black text-slate-800 uppercase tracking-wider">{dayConfig.label}</span>
+                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-white border border-slate-200 text-[10px] font-bold text-slate-400">
+                  {dayConfig.shifts.length}
+                </span>
               </div>
               <button
                 onClick={() => openAddModal(dayConfig.value)}
-                className="flex items-center gap-1 px-2 py-1 text-xs text-blue-600 hover:bg-blue-50 rounded"
+                className="p-1.5 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                title="Dodaj smjenu"
               >
-                <Plus size={14} />
-                Dodaj
+                <Plus size={16} />
               </button>
             </div>
-            
-            {dayConfig.shifts.length === 0 ? (
-              <div className="px-4 py-8 text-center text-slate-400">
-                Nema smjena za ovaj dan
-              </div>
-            ) : (
-              <div className="p-4 space-y-2">
-                {dayConfig.shifts
-                  .sort((a, b) => a.startTime.localeCompare(b.startTime))
-                  .map(shift => {
-                    const colorStyle = getColorStyle(shift.color || '#3B82F6');
-                    return (
-                      <div
-                        key={shift.id}
-                        className={`flex items-center justify-between p-3 rounded-lg border ${colorStyle.bgLight} border-slate-200`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className={`w-3 h-3 rounded-full ${colorStyle.bg}`} />
-                          <div>
-                            <div className="font-medium text-slate-800">
-                              {shift.label || 'Bez naziva'}
-                            </div>
-                            <div className="text-sm text-slate-500 flex items-center gap-1">
-                              <Clock size={14} />
-                              {shift.startTime} - {shift.endTime}
+
+            <div className="flex-1 p-5 min-h-[120px]">
+              {dayConfig.shifts.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-center space-y-2 opacity-40">
+                  <div className="w-8 h-8 rounded-full border-2 border-dashed border-slate-300 flex items-center justify-center">
+                    <Clock size={14} className="text-slate-300" />
+                  </div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Nema smjena</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {dayConfig.shifts
+                    .sort((a, b) => a.startTime.localeCompare(b.startTime))
+                    .map(shift => {
+                      const colorStyle = getColorStyle(shift.color || '#3B82F6');
+                      return (
+                        <div
+                          key={shift.id}
+                          className={`group flex items-center justify-between p-3.5 rounded-2xl border border-slate-100/60 transition-all hover:bg-slate-50 relative overflow-hidden`}
+                        >
+                          <div className={`absolute left-0 top-0 bottom-0 w-1 ${colorStyle.bg}`} />
+                          <div className="flex items-center gap-3">
+                            <div className="space-y-0.5">
+                              <div className="font-bold text-slate-800 text-sm tracking-tight leading-tight">
+                                {shift.label || 'Bez naziva'}
+                              </div>
+                              <div className="text-[10px] font-bold text-slate-400 flex items-center gap-1 uppercase tracking-tighter">
+                                <Clock size={10} />
+                                {shift.startTime} — {shift.endTime}
+                              </div>
                             </div>
                           </div>
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => openEditModal(shift)}
+                              className="p-1.5 text-slate-400 hover:text-primary-600 hover:bg-white rounded-lg transition-all"
+                              title="Uredi"
+                            >
+                              <Pencil size={14} />
+                            </button>
+                            <button
+                              onClick={() => onRemoveShift(shift.id)}
+                              className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-white rounded-lg transition-all"
+                              title="Obriši"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => openEditModal(shift)}
-                            className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded"
-                            title="Uredi"
-                          >
-                            <Pencil size={16} />
-                          </button>
-                          <button
-                            onClick={() => onRemoveShift(shift.id)}
-                            className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded"
-                            title="Obriši"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-              </div>
-            )}
+                      );
+                    })}
+                </div>
+              )}
+            </div>
           </div>
         ))}
       </div>
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4">
-            <div className="flex items-center justify-between px-6 py-4 border-b">
-              <h3 className="text-lg font-semibold">
-                {editingShift ? 'Uredi smjenu' : 'Dodaj smjenu'}
-              </h3>
-              <button onClick={closeModal} className="text-slate-400 hover:text-slate-600">
+        <div className="fixed inset-0 bg-primary-950/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl shadow-premium w-full max-w-lg overflow-hidden animate-enter">
+            <div className="flex items-center justify-between px-8 py-6 border-b border-slate-100">
+              <div>
+                <h3 className="text-xl font-bold text-slate-900 tracking-tight">
+                  {editingShift ? 'Uredi parametre smjene' : 'Definisanje nove smjene'}
+                </h3>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                  Shift Intelligence Configuration
+                </p>
+              </div>
+              <button
+                onClick={closeModal}
+                className="p-2 hover:bg-red-50 hover:text-red-500 text-slate-400 rounded-xl transition-all"
+              >
                 <X size={20} />
               </button>
             </div>
-            
-            <div className="p-6 space-y-4">
+
+            <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
               {/* Label */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+              <div className="space-y-2">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">
                   Naziv smjene *
                 </label>
                 <input
                   type="text"
                   value={formData.label}
                   onChange={(e) => setFormData(prev => ({ ...prev, label: e.target.value }))}
-                  className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-primary-500/5 focus:border-primary-300 transition-all font-medium"
                   placeholder="npr. Jutarnja, Večernja, Vikend..."
                 />
               </div>
 
-              {/* Day */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Dan *
-                </label>
-                <select
-                  value={formData.day}
-                  onChange={(e) => setFormData(prev => ({ ...prev, day: e.target.value as DayOfWeek }))}
-                  className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-200"
-                  disabled={formData.replicateToAllDays}
-                >
-                  {DAYS.map(day => (
-                    <option key={day.value} value={day.value}>{day.label}</option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Day */}
+                <div className="space-y-2">
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">
+                    Dan u sedmici *
+                  </label>
+                  <select
+                    value={formData.day}
+                    onChange={(e) => setFormData(prev => ({ ...prev, day: e.target.value as DayOfWeek }))}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-primary-500/5 focus:border-primary-300 transition-all font-bold appearance-none"
+                    disabled={formData.replicateToAllDays}
+                  >
+                    {DAYS.map(day => (
+                      <option key={day.value} value={day.value}>{day.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Color */}
+                <div className="space-y-2">
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">
+                    Identifikaciona Boja
+                  </label>
+                  <div className="flex gap-2.5 pt-1">
+                    {SHIFT_COLORS.map(color => (
+                      <button
+                        key={color.value}
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, color: color.value }))}
+                        className={`w-7 h-7 rounded-full ${color.bg} transition-all ${formData.color === color.value
+                          ? 'ring-2 ring-offset-2 ring-primary-900 scale-110 shadow-lg'
+                          : 'hover:scale-110'
+                          }`}
+                        title={color.label}
+                      />
+                    ))}
+                  </div>
+                </div>
               </div>
 
               {/* Replicate to all days */}
               {!editingShift && (
-                <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
-                  <input
-                    type="checkbox"
-                    id="replicateToAllDays"
-                    checked={formData.replicateToAllDays}
-                    onChange={(e) => setFormData(prev => ({ ...prev, replicateToAllDays: e.target.checked }))}
-                    className="w-5 h-5 text-blue-600 rounded focus:ring-blue-200"
-                  />
-                  <label htmlFor="replicateToAllDays" className="flex-1 cursor-pointer">
-                    <div className="font-medium text-slate-800">Dodaj na sve dane</div>
-                    <div className="text-sm text-slate-500">Kreirat će smjenu za svaki dan u sedmici</div>
-                  </label>
+                <div className="flex items-center gap-4 p-4 bg-primary-50/50 rounded-2xl border border-primary-100 group cursor-pointer" onClick={() => setFormData(prev => ({ ...prev, replicateToAllDays: !prev.replicateToAllDays }))}>
+                  <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${formData.replicateToAllDays ? 'bg-primary-900 text-white' : 'bg-white border border-slate-200 text-transparent'}`}>
+                    <X size={14} className={formData.replicateToAllDays ? '' : 'hidden'} />
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-xs font-bold text-slate-800">Repliciraj na sve dane</div>
+                    <div className="text-[10px] font-medium text-slate-400 tracking-tight">Automatsko kreiranje za cijelu sedmicu</div>
+                  </div>
                 </div>
               )}
 
               {/* Time */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Početak *
+              <div className="grid grid-cols-2 gap-6 p-5 bg-slate-50 rounded-2xl border border-slate-100">
+                <div className="space-y-2">
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">
+                    Početak rada
                   </label>
                   <input
                     type="time"
                     value={formData.startTime}
                     onChange={(e) => setFormData(prev => ({ ...prev, startTime: e.target.value }))}
-                    className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-primary-500/5 focus:border-primary-300 transition-all font-bold text-center"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Kraj *
+                <div className="space-y-2">
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">
+                    Kraj rada
                   </label>
                   <input
                     type="time"
                     value={formData.endTime}
                     onChange={(e) => setFormData(prev => ({ ...prev, endTime: e.target.value }))}
-                    className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-primary-500/5 focus:border-primary-300 transition-all font-bold text-center"
                   />
                 </div>
               </div>
 
-              {/* Color */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Boja
-                </label>
-                <div className="flex gap-2">
-                  {SHIFT_COLORS.map(color => (
-                    <button
-                      key={color.value}
-                      type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, color: color.value }))}
-                      className={`w-8 h-8 rounded-full ${color.bg} ${
-                        formData.color === color.value ? 'ring-2 ring-offset-2 ring-slate-400' : ''
-                      }`}
-                      title={color.label}
-                    />
-                  ))}
-                </div>
-              </div>
-
               {/* Preview */}
-              <div className="pt-2">
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Pregled
+              <div className="space-y-2">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">
+                  Pregled kartice smjene
                 </label>
-                <div className={`p-3 rounded-lg border ${getColorStyle(formData.color).bgLight}`}>
-                  <div className="font-medium text-slate-800">
-                    {formData.label || 'Bez naziva'}
-                  </div>
-                  <div className="text-sm text-slate-500 flex items-center gap-1">
-                    <Clock size={14} />
-                    {formData.startTime} - {formData.endTime}
+                <div className={`p-4 rounded-2xl border ${getColorStyle(formData.color).bgLight} border-slate-200/50 flex items-center justify-between`}>
+                  <div className="flex items-center gap-3">
+                    <div className={`w-3 h-3 rounded-full ${getColorStyle(formData.color).bg} shadow-soft`} />
+                    <div>
+                      <div className="font-bold text-slate-900 text-sm">{formData.label || 'Naziv nije postavljen'}</div>
+                      <div className="text-[10px] font-bold text-slate-400 flex items-center gap-1 uppercase tracking-tighter">
+                        <Clock size={10} />
+                        {formData.startTime} - {formData.endTime}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t bg-slate-50">
+            <div className="flex items-center justify-end gap-4 px-8 py-6 border-t border-slate-100 bg-slate-50/50">
               <button
                 onClick={closeModal}
-                className="px-4 py-2 text-slate-600 hover:text-slate-800"
+                className="px-6 py-2.5 text-sm font-bold text-slate-400 hover:text-slate-600 transition-colors"
               >
                 Odustani
               </button>
               <button
                 onClick={handleSave}
                 disabled={!formData.label.trim() || !formData.startTime || !formData.endTime}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                className="px-8 py-2.5 bg-primary-900 text-white rounded-xl shadow-premium hover:scale-105 active:scale-95 transition-all font-bold text-sm disabled:opacity-50 disabled:scale-100"
               >
-                Sačuvaj
+                {editingShift ? 'Sačuvaj izmjene' : 'Potvrdi kreiranje'}
               </button>
             </div>
           </div>
