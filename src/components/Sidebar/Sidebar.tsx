@@ -1,273 +1,175 @@
-// ===========================================
-// Notion-Style Sidebar for RestoHub
-// Clean, organized navigation with collapsible sections
-// ===========================================
-
 import React, { useState } from 'react';
-import { 
-  Calendar, Users, Tag, FileText, Settings,
-  ArrowLeftRight, Bed, Trash2, Utensils,
-  AlertTriangle, X, ChevronDown, ChevronRight,
-  Search, User, LogOut, Shield, BookOpen
-} from 'lucide-react';
-import { Employee, Shift, Duty, Assignment } from '../../types/index';
-
-export interface SidebarProps {
-  employees: Employee[];
-  duties: Duty[];
-  shifts: Shift[];
-  assignments?: Assignment[];
-  aiRules: string;
-  currentPage?: string;
-  onPageChange?: (page: string) => void;
-  onAddEmployee?: (employee: Omit<Employee, 'id'>) => void;
-  onRemoveEmployee?: (id: string) => void;
-  onUpdateEmployee?: (employee: Employee) => void;
-  onAddDuty?: (duty: Omit<Duty, 'id'>) => void;
-  onRemoveDuty?: (id: string) => void;
-  onAddShift?: (shift: Omit<Shift, 'id'>) => void;
-  onRemoveShift?: (id: string) => void;
-  onUpdateShift?: (shift: Shift) => void;
-  onUpdateAiRules?: (rules: string) => void;
-  onResetAll?: () => void;
-  onImportData?: (data: any) => void;
-  onClose?: () => void;
-  canManageUsers?: boolean;
-  canAccessSettings?: boolean;
-}
-
-type TabType = 'employees' | 'shifts' | 'duties' | 'templates' | 'ai';
-
-// Navigation sections - Notion style
-interface NavSection {
-  id: string;
-  title: string;
-  icon: React.ReactNode;
-  items: NavItem[];
-}
+import { Calendar, Users, Clock, FileText, Settings, HelpCircle, ChevronLeft, ChevronRight, Search, MapPin, Star } from 'lucide-react';
+import { Employee, Zone, SpecialDuty } from '../../types';
 
 interface NavItem {
   id: string;
   icon: React.ReactNode;
   label: string;
-  badge?: string;
 }
 
-const navigationSections = (canManageUsers: boolean, canAccessSettings: boolean): NavSection[] => [
-  {
-    id: 'schedule',
-    title: '📅 RASPORED',
-    icon: <Calendar size={14} />,
-    items: [
-      { id: 'schedule', icon: <Calendar size={12} />, label: 'Raspored smjena' },
-      { id: 'employees', icon: <Users size={12} />, label: 'Radnici' },
-      { id: 'shifts', icon: <Tag size={12} />, label: 'Smjene' },
-      { id: 'duties', icon: <FileText size={12} />, label: 'Dužnosti' },
-    ],
-  },
-  {
-    id: 'operations',
-    title: '🔄 OPERACIJE',
-    icon: <ArrowLeftRight size={14} />,
-    items: [
-      { id: 'handover', icon: <ArrowLeftRight size={12} />, label: 'Primopredaja' },
-      { id: 'roomservice', icon: <Bed size={12} />, label: 'Room Service' },
-      { id: 'wastelist', icon: <Trash2 size={12} />, label: 'Otpis hrane' },
-      { id: 'dailymenu', icon: <Utensils size={12} />, label: 'Dnevni meni' },
-    ],
-  },
-  {
-    id: 'menu',
-    title: '🍽️ JELOVNIK',
-    icon: <BookOpen size={14} />,
-    items: [
-      { id: 'menu', icon: <BookOpen size={12} />, label: 'Digitalna Karta' },
-      { id: 'dailymenu', icon: <Utensils size={12} />, label: 'Dnevna Ponuda' },
-    ],
-  },
-  {
-    id: 'safety',
-    title: '⚠️ BEZBJEDNOST',
-    icon: <AlertTriangle size={14} />,
-    items: [
-      { id: 'allergens', icon: <AlertTriangle size={12} />, label: 'Alergeni' },
-      { id: 'outofstock', icon: <X size={12} />, label: '86 (Nedostaje)' },
-    ],
-  },
-  {
-    id: 'reports',
-    title: '📊 IZVJEŠTAJI',
-    icon: <Shield size={14} />,
-    items: [
-      { id: 'report', icon: <Shield size={12} />, label: 'Dnevni izvještaj' },
-    ],
-  },
-  {
-    id: 'settings',
-    title: '⚙️ POSTAVKE',
-    icon: <Settings size={14} />,
-    items: [
-      ...(canManageUsers ? [
-        { id: 'users', icon: <User size={12} />, label: 'Korisnici' },
-        { id: 'permissions', icon: <Shield size={12} />, label: 'Dozvole' },
-      ] : []),
-      ...(canAccessSettings ? [
-        { id: 'settings', icon: <Settings size={12} />, label: 'Sistem' },
-      ] : []),
-    ],
-  },
-];
+interface NavSection {
+  id: string;
+  title: string;
+  items: NavItem[];
+  icon?: React.ReactNode; // Optional section icon
+}
 
-export function Sidebar({
-  employees: _employees,
-  duties: _duties,
-  shifts: _shifts,
-  assignments: _assignments,
-  aiRules: _aiRules,
-  currentPage = 'schedule',
-  onPageChange = () => {},
-  onAddEmployee: _onAddEmployee,
-  onRemoveEmployee: _onRemoveEmployee,
-  onUpdateEmployee: _onUpdateEmployee,
-  onAddDuty: _onAddDuty,
-  onRemoveDuty: _onRemoveDuty,
-  onAddShift: _onAddShift,
-  onRemoveShift: _onRemoveShift,
-  onUpdateShift: _onUpdateShift,
-  onUpdateAiRules: _onUpdateAiRules,
-  onResetAll: _onResetAll,
-  onImportData: _onImportData,
-  onClose: _onClose,
-  canManageUsers = false,
-  canAccessSettings = false,
-}: SidebarProps) {
-  const [_activeTab, _setActiveTab] = useState<TabType>('employees');
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    schedule: true,
-    operations: true,
-    safety: true,
-    reports: true,
-    settings: true,
-  });
-  const [searchQuery, setSearchQuery] = useState('');
+interface SidebarProps {
+  currentPage: string;
+  onNavigate: (pageId: string) => void;
+  employees: Employee[];
+}
 
-  const sections = navigationSections(canManageUsers, canAccessSettings);
+export function Sidebar({ currentPage, onNavigate, employees }: SidebarProps) {
+  const [collapsed, setCollapsed] = useState(false);
+  const [activeTab, setActiveTab] = useState<'nav' | 'employees'>('nav');
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const toggleSection = (sectionId: string) => {
-    setExpandedSections(prev => ({
-      ...prev,
-      [sectionId]: !prev[sectionId],
-    }));
-  };
+  // Define navigation sections
+  const navigationSections = (canManageUsers: boolean, canAccessSettings: boolean): NavSection[] => [
+    {
+      id: 'schedule',
+      title: '📅 RASPORED',
+      icon: <Calendar size={14} />,
+      items: [
+        { id: 'schedule', icon: <Calendar size={12} />, label: 'Raspored smjena' },
+        { id: 'employees', icon: <Users size={12} />, label: 'Radnici' },
+        { id: 'shifts', icon: <Clock size={12} />, label: 'Smjene' },
+        { id: 'duties', icon: <FileText size={12} />, label: 'Dužnosti' },
+        { id: 'zones', icon: <MapPin size={12} />, label: 'Reoni' }, // New Item
+        { id: 'specialDuties', icon: <Star size={12} />, label: 'Posebne Dužnosti' }, // New Item
+      ],
+    },
+    /* 
+    // Example of permissions-based sections commented out for simplicity, but structure is here
+    ...(canManageUsers ? [{
+      id: 'team',
+      title: '👥 TIM', 
+      items: [
+        { id: 'users', icon: <Users size={12} />, label: 'Korisnici' },
+        { id: 'permissions', icon: <Shield size={12} />, label: 'Dozvole' }
+      ]
+    }] : []),
+    */
+    {
+       id: 'system',
+       title: '⚙️ SISTEM',
+       items: [
+          { id: 'settings', icon: <Settings size={12} />, label: 'Podešavanja' },
+          { id: 'help', icon: <HelpCircle size={12} />, label: 'Pomoć' }
+       ]
+    }
+  ];
 
-  const toggleAllSections = (expand: boolean) => {
-    const allExpanded = sections.reduce((acc, section) => {
-      acc[section.id] = expand;
-      return acc;
-    }, {} as Record<string, boolean>);
-    setExpandedSections(allExpanded);
-  };
+  const sections = navigationSections(true, true); // Mock permissions
 
-  // Filter sections based on search
-  const filteredSections = sections.map(section => ({
-    ...section,
-    items: section.items.filter(item =>
-      item.label.toLowerCase().includes(searchQuery.toLowerCase())
-    ),
-  })).filter(section => section.items.length > 0);
+  const filteredEmployees = employees.filter(e => 
+    e.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    e.role.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
-    <div className="flex flex-col h-full bg-white w-72 shrink-0 border-r border-slate-200">
-      {/* Header with search */}
-      <div className="p-4 border-b border-slate-200">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <span className="text-xl">🍽️</span>
-            <h1 className="text-lg font-bold text-slate-800">RestoHub</h1>
+    <div className={`h-full flex flex-col bg-gray-50/50 dark:bg-gray-800/50 transition-all duration-300 ${collapsed ? 'w-16' : 'w-full'}`}>
+      
+      {/* Search Bar - Only in expanded mode */}
+      {!collapsed && (
+        <div className="p-3">
+          <div className="relative">
+             <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+             <input 
+                type="text" 
+                placeholder="Pretraži..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-8 pr-3 py-1.5 bg-white dark:bg-gray-800 border-none rounded shadow-sm text-sm focus:ring-1 focus:ring-gray-200 dark:focus:ring-gray-600 placeholder:text-gray-400"
+             />
           </div>
-          <button 
-            onClick={() => toggleAllSections(!expandedSections['schedule'])}
-            className="text-xs text-slate-400 hover:text-slate-600"
-          >
-            {expandedSections['schedule'] ? 'Sklopi' : 'Otvori'}
-          </button>
         </div>
-        
-        {/* Search */}
-        <div className="relative">
-          <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Pretraži..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 bg-slate-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-          />
-        </div>
-      </div>
+      )}
 
-      {/* Navigation sections */}
-      <div className="flex-1 overflow-y-auto">
-        {filteredSections.map(section => (
-          <div key={section.id} className="border-b border-slate-100">
-            {/* Section header */}
+      {/* Tabs */}
+      {!collapsed && (
+         <div className="flex px-3 border-b border-gray-200 dark:border-gray-700">
             <button
-              onClick={() => toggleSection(section.id)}
-              className="w-full px-4 py-2 flex items-center justify-between hover:bg-slate-50"
+               onClick={() => setActiveTab('nav')}
+               className={`flex-1 py-2 text-xs font-medium border-b-2 transition-colors ${
+                  activeTab === 'nav' 
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400' 
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+               }`}
             >
-              <div className="flex items-center gap-2">
-                <span className="text-slate-400">{section.icon}</span>
-                <span className="text-xs font-semibold text-slate-500 uppercase">
-                  {section.title}
-                </span>
-              </div>
-              {expandedSections[section.id] ? (
-                <ChevronDown size={12} className="text-slate-400" />
-              ) : (
-                <ChevronRight size={12} className="text-slate-400" />
-              )}
+               Navigacija
             </button>
+            <button
+               onClick={() => setActiveTab('employees')}
+               className={`flex-1 py-2 text-xs font-medium border-b-2 transition-colors ${
+                  activeTab === 'employees' 
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400' 
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+               }`}
+            >
+               Radnici ({filteredEmployees.length})
+            </button>
+         </div>
+      )}
 
-            {/* Section items */}
-            {expandedSections[section.id] && (
-              <div className="pb-2">
-                {section.items.map(item => (
-                  <button
-                    key={item.id}
-                    onClick={() => onPageChange(item.id)}
-                    className={`w-full px-4 py-2 pl-9 flex items-center gap-2 transition-colors ${
-                      currentPage === item.id
-                        ? 'bg-blue-50 text-blue-700'
-                        : 'text-slate-600 hover:bg-slate-50'
-                    }`}
-                  >
-                    <span className={currentPage === item.id ? 'text-blue-600' : 'text-slate-400'}>
-                      {item.icon}
-                    </span>
-                    <span className="text-sm">{item.label}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
+      {/* Content Area */}
+      <div className="flex-1 overflow-y-auto py-2 custom-scrollbar">
+         {activeTab === 'nav' ? (
+            <div className="space-y-6 px-3">
+               {sections.map(section => (
+                 <div key={section.id}>
+                    {!collapsed && (
+                       <div className="flex items-center gap-2 mb-1 px-2 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                          {section.title}
+                       </div>
+                    )}
+                    <div className="space-y-0.5">
+                       {section.items.map(item => (
+                          <button
+                             key={item.id}
+                             onClick={() => onNavigate(item.id)}
+                             title={collapsed ? item.label : undefined}
+                             className={`
+                                w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors
+                                ${currentPage === item.id 
+                                   ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 font-medium' 
+                                   : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+                                }
+                                ${collapsed ? 'justify-center px-0' : ''}
+                             `}
+                          >
+                             <span className={collapsed ? 'p-1' : ''}>{item.icon}</span>
+                             {!collapsed && <span>{item.label}</span>}
+                          </button>
+                       ))}
+                    </div>
+                 </div>
+               ))}
+            </div>
+         ) : (
+            <div className="px-3 space-y-1">
+               {filteredEmployees.map(emp => (
+                  <div key={emp.id} className="flex items-center gap-2 p-2 hover:bg-white dark:hover:bg-gray-700 rounded-md cursor-default group transition-colors">
+                     <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">
+                        {emp.name.charAt(0)}
+                     </div>
+                     <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-gray-700 dark:text-gray-200 truncate">{emp.name}</div>
+                        <div className="text-[10px] text-gray-400 truncate">{emp.role}</div>
+                     </div>
+                  </div>
+               ))}
+               {filteredEmployees.length === 0 && (
+                  <div className="px-2 py-4 text-center text-xs text-gray-400">
+                     Nema pronađenih radnika
+                  </div>
+               )}
+            </div>
+         )}
       </div>
 
-      {/* Footer with user info */}
-      <div className="p-4 border-t border-slate-200">
-        <div className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 cursor-pointer">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white text-sm font-bold">
-            A
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-medium text-slate-700">Admin</p>
-            <p className="text-xs text-slate-400">Administrator</p>
-          </div>
-          <button className="p-1.5 hover:bg-slate-100 rounded-lg">
-            <LogOut size={14} className="text-slate-400" />
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

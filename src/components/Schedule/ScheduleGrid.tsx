@@ -1,556 +1,369 @@
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, Bot, Calendar, Users, Plus, Check, Printer, X } from 'lucide-react';
-import { Employee, Shift, Assignment, Duty, DayOfWeek, Role } from '../../types';
-import { formatDateToId, getDayName, dayOfWeekToDate } from '../../utils/date';
+import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Wand2, Calculator, MoreHorizontal } from 'lucide-react';
+import { Employee, Shift, Assignment, Duty, DayOfWeek, ALL_DAYS, Zone, SpecialDuty } from '../../types';
+import { formatDate, getDayName } from '../../utils/date';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
+import { DutyAssignmentModal } from './DutyAssignmentModal';
 
-export interface ScheduleGridProps {
+interface ScheduleGridProps {
+  currentWeekStart: Date;
+  employees: Employee[];
   shifts: Shift[];
   assignments: Assignment[];
-  employees: Employee[];
   duties: Duty[];
-  currentWeekStart: Date;
-  onRemoveAssignment: (id: string) => void;
-  onManualAssign: (shiftId: string, employeeId: string, day: DayOfWeek) => boolean;
+  zones: Zone[];
+  specialDuties: SpecialDuty[];
   onNavigateWeek: (direction: number) => void;
-  onToggleSidebar: () => void;
-  onToggleChat: () => void;
+  onAssign: (shiftId: string, employeeId: string, day: DayOfWeek, dutyIds?: string[], zoneIds?: string[], specialDutyIds?: string[]) => void;
+  onRemoveAssignment: (assignmentId: string) => void;
+}
+
+interface PendingAssignment {
+  shiftId: string;
+  employeeId: string;
+  day: DayOfWeek;
+  employeeName: string;
+  shiftLabel: string;
+  initialDutyIds?: string[];
+  initialZoneIds?: string[];
+  initialSpecialDutyIds?: string[];
 }
 
 export function ScheduleGrid({
+  currentWeekStart,
+  employees,
   shifts,
   assignments,
-  employees,
   duties,
-  currentWeekStart,
-  onRemoveAssignment,
-  onManualAssign,
+  zones,
+  specialDuties,
   onNavigateWeek,
-  onToggleSidebar,
-  onToggleChat,
+  onAssign,
+  onRemoveAssignment,
 }: ScheduleGridProps) {
-  const weekDays = Object.values(DayOfWeek);
-  const weekDates = weekDays.map(day => dayOfWeekToDate(currentWeekStart, day));
+  const [pendingAssignment, setPendingAssignment] = useState<PendingAssignment | null>(null);
 
-  // Get week date range string
-  const getWeekDateRange = () => {
-    const start = weekDates[0];
-    const end = weekDates[6];
-    const formatDate = (d: Date) => d.toLocaleDateString('hr-HR');
-    return `${formatDate(start)} - ${formatDate(end)}`;
-  };
+  const handleDragEnd = (result: DropResult) => {
+    if (!result.destination) return;
 
-  // Modal state for manual employee assignment
-  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
-  const [selectedShiftId, setSelectedShiftId] = useState<string | null>(null);
-  const [selectedShiftLabel, setSelectedShiftLabel] = useState<string>('');
-  const [selectedDay, setSelectedDay] = useState<DayOfWeek | null>(null);
-  const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<Set<string>>(new Set());
-  
-  // Drag and drop state
-  const [dragOverCell, setDragOverCell] = useState<string | null>(null);
+    const { draggableId, destination } = result;
+    const employeeId = draggableId;
+    
+    // Parse destination ID: "shiftId|day"
+    const [shiftId, dayStr] = destination.droppableId.split('|');
+    const day = dayStr as DayOfWeek;
 
-  // Get assignments for a specific shift AND specific day
-  const getAssignmentsForShiftAndDay = (shiftId: string, day: DayOfWeek): Assignment[] => {
-    const weekId = formatDateToId(currentWeekStart);
-    return assignments.filter(a => a.shiftId === shiftId && a.weekId === weekId && a.day === day);
-  };
+    // Check if employee is already assigned to this shift/day
+    const existingAssignment = assignments.find(
+      a => a.shiftId === shiftId && a.day === day && a.employeeId === employeeId
+    );
 
-  const getEmployeeById = (id: string) => {
-    return employees.find(e => e.id === id);
-  };
-
-  const getDutyById = (id: string) => {
-    return duties.find(d => d.id === id);
-  };
-
-  // Get role-based color classes for employee badges
-  const getRoleColor = (role: Role) => {
-    switch (role) {
-      case Role.CHEF:
-        return 'bg-orange-100 text-orange-700';
-      case Role.MANAGER:
-        return 'bg-purple-100 text-purple-700';
-      case Role.BARTENDER:
-        return 'bg-emerald-100 text-emerald-700';
-      case Role.HOST:
-        return 'bg-pink-100 text-pink-700';
-      case Role.DISHWASHER:
-        return 'bg-amber-100 text-amber-700';
-      case Role.HEAD_WAITER:
-        return 'bg-indigo-100 text-indigo-700';
-      default:
-        return 'bg-blue-100 text-blue-700'; // Server and others
+    if (!existingAssignment) {
+      // Open modal for duty selection instead of direct assignment
+      handleOpenDutyModal(shiftId, employeeId, day);
     }
   };
 
-  const handleOpenAssignModal = (shiftId: string, shiftLabel: string, day: DayOfWeek) => {
-    setSelectedShiftId(shiftId);
-    setSelectedShiftLabel(shiftLabel);
-    setSelectedDay(day);
-    setSelectedEmployeeIds(new Set(getAssignmentsForShiftAndDay(shiftId, day).map(a => a.employeeId)));
-    setIsAssignModalOpen(true);
-  };
+  const handleOpenDutyModal = (
+    shiftId: string, 
+    employeeId: string, 
+    day: DayOfWeek, 
+    initialDutyIds?: string[],
+    initialZoneIds?: string[],
+    initialSpecialDutyIds?: string[]
+  ) => {
+    const employee = employees.find(e => e.id === employeeId);
+    const shift = shifts.find(s => s.id === shiftId);
+    if (!employee || !shift) return;
 
-  const handleCloseAssignModal = () => {
-    setIsAssignModalOpen(false);
-    setSelectedShiftId(null);
-    setSelectedShiftLabel('');
-    setSelectedDay(null);
-    setSelectedEmployeeIds(new Set());
-  };
-
-  const toggleEmployeeSelection = (employeeId: string) => {
-    const assigned = getCurrentAssignedEmployees();
-    if (assigned.includes(employeeId)) return;
-    
-    setSelectedEmployeeIds(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(employeeId)) {
-        newSet.delete(employeeId);
-      } else {
-        newSet.add(employeeId);
-      }
-      return newSet;
+    setPendingAssignment({
+      shiftId,
+      employeeId,
+      day,
+      employeeName: employee.name,
+      shiftLabel: shift.label,
+      initialDutyIds,
+      initialZoneIds,
+      initialSpecialDutyIds
     });
   };
 
-  const handleAddSelectedEmployees = () => {
-    if (!selectedShiftId || !selectedDay) return;
-    
-    const alreadyAddedInThisBatch: string[] = [];
-    
-    selectedEmployeeIds.forEach(id => {
-      const added = onManualAssign(selectedShiftId, id, selectedDay);
-      if (added) {
-        alreadyAddedInThisBatch.push(id);
-      }
-    });
-    
-    setSelectedEmployeeIds(new Set());
-    handleCloseAssignModal();
-    
-    // Show success message
-    if (alreadyAddedInThisBatch.length > 0) {
+  const handleConfirmAssignment = (dutyIds: string[], zoneIds: string[], specialDutyIds: string[]) => {
+    if (pendingAssignment) {
+      onAssign(
+        pendingAssignment.shiftId, 
+        pendingAssignment.employeeId, 
+        pendingAssignment.day, 
+        dutyIds,
+        zoneIds,
+        specialDutyIds
+      );
+      setPendingAssignment(null);
     }
   };
 
-  const handleSelectAllUnassigned = () => {
-    const assigned = getCurrentAssignedEmployees();
-    const unassigned = employees.filter(e => !assigned.includes(e.id));
-    setSelectedEmployeeIds(new Set(unassigned.map(e => e.id)));
-  };
-
-  // Get assigned employees for the currently selected shift and day
-  const getCurrentAssignedEmployees = (): string[] => {
-    if (!selectedShiftId || !selectedDay) return [];
-    return getAssignmentsForShiftAndDay(selectedShiftId, selectedDay).map(a => a.employeeId);
-  };
-
-  // Drag and drop handlers
-  const handleDragOver = (e: React.DragEvent, cellId: string) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'copy';
-    setDragOverCell(cellId);
-  };
-
-  const handleDragLeave = () => {
-    setDragOverCell(null);
-  };
-
-  const handleDrop = (e: React.DragEvent, cellId: string) => {
-    e.preventDefault();
-    setDragOverCell(null);
-    
-    // Extract shiftId and day from cellId (format: "shiftId___day")
-    const [shiftId, day] = cellId.split('___');
-    
-    try {
-      const data = JSON.parse(e.dataTransfer.getData('application/json'));
-      if (data.type === 'employee') {
-        // Check if already assigned to this specific day
-        const assigned = getAssignmentsForShiftAndDay(shiftId, day as DayOfWeek).map(a => a.employeeId);
-        if (!assigned.includes(data.employeeId)) {
-          onManualAssign(shiftId, data.employeeId, day as DayOfWeek);
-        }
-      }
-    } catch (err) {
+  const getWeekDays = () => {
+    const days = [];
+    const start = new Date(currentWeekStart);
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(start);
+      date.setDate(start.getDate() + i);
+      days.push({
+        date,
+        dayName: ALL_DAYS[i],
+        isToday: new Date().toDateString() === date.toDateString()
+      });
     }
+    return days;
+  };
+
+  const weekDays = getWeekDays();
+
+  // Helper to get color for item
+  const getItemColor = (id: string, type: 'duty' | 'zone' | 'specialDuty') => {
+    if (type === 'duty') return duties.find(d => d.id === id)?.color;
+    if (type === 'zone') return zones.find(z => z.id === id)?.color;
+    if (type === 'specialDuty') return specialDuties.find(s => s.id === id)?.color;
+    return undefined;
+  };
+
+  // Helper to get label for item
+  const getItemLabel = (id: string, type: 'duty' | 'zone' | 'specialDuty') => {
+    if (type === 'duty') return duties.find(d => d.id === id)?.label;
+    if (type === 'zone') return zones.find(z => z.id === id)?.label;
+    if (type === 'specialDuty') return specialDuties.find(s => s.id === id)?.label;
+    return undefined;
   };
 
   return (
-    <div id="schedule-container" className="flex-1 flex flex-col overflow-auto bg-slate-100">
-      {/* Header */}
-      <header className="bg-white border-b border-slate-200 px-4 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+    <div className="h-full flex flex-col bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+      {/* Header Controls */}
+      <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-white dark:bg-gray-800 sticky top-0 z-20">
+        <div className="flex items-center gap-4">
+          <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
             <button
-              onClick={onToggleSidebar}
-              className="p-2 hover:bg-slate-100 rounded-lg lg:hidden"
+              onClick={() => onNavigateWeek(-1)}
+              className="p-1.5 hover:bg-white dark:hover:bg-gray-600 rounded-md transition-shadow shadow-sm"
             >
-              <Calendar size={20} />
+              <ChevronLeft size={18} />
             </button>
-            <h1 className="text-xl font-bold text-slate-800">
-              📅 Raspored smjena
-            </h1>
+            <button
+              onClick={() => onNavigateWeek(1)}
+              className="p-1.5 hover:bg-white dark:hover:bg-gray-600 rounded-md transition-shadow shadow-sm"
+            >
+              <ChevronRight size={18} />
+            </button>
           </div>
           
-          {/* Week Navigation */}
           <div className="flex items-center gap-2">
-            <button 
-              onClick={() => onNavigateWeek(-1)}
-              className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-            >
-              <ChevronLeft size={20} />
-            </button>
-            <span className="text-sm font-medium text-slate-700 min-w-[160px] text-center">
-              {getWeekDateRange()}
+            <CalendarIcon className="text-blue-600" size={20} />
+            <span className="text-lg font-semibold text-gray-900 dark:text-white">
+              {formatDate(currentWeekStart)} - {formatDate(weekDays[6].date)}
             </span>
-            <button 
-              onClick={() => onNavigateWeek(1)}
-              className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-            >
-              <ChevronRight size={20} />
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={onToggleChat}
-              className="p-2 hover:bg-slate-100 rounded-lg transition-colors bg-primary-100 text-primary-600"
-              title="Otvori chat"
-            >
-              <Bot size={20} />
-            </button>
-            <button
-              onClick={() => window.print()}
-              className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-600"
-              title="Štampaj raspored"
-            >
-              <Printer size={20} />
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* Schedule Grid */}
-      <div className="flex-1 overflow-auto p-4">
-        <div className="schedule-grid bg-slate-200 rounded-lg overflow-hidden">
-          {/* Header Row - Days */}
-          <div className="bg-slate-100 border-b border-slate-300">
-            <div className="p-3 font-medium text-slate-600 text-center border-r border-slate-300">
-              Smjena
-            </div>
-          </div>
-          {weekDays.map((day, index) => (
-            <div key={day} className="schedule-cell-header border-r border-slate-300 last:border-r-0">
-              <div className="font-medium">{getDayName(weekDates[index])}</div>
-              <div className="text-xs text-slate-400">{formatDateToId(weekDates[index])}</div>
-            </div>
-          ))}
-
-          {/* Shift Rows */}
-          {shifts.map((shift) => (
-            <React.Fragment key={shift.id}>
-              {/* Shift Label */}
-              <div className="p-3 bg-slate-50 border-r border-slate-300 border-t border-slate-200">
-                <div className="font-medium text-slate-700">{shift.label}</div>
-                <div className="text-xs text-slate-500">{shift.startTime}-{shift.endTime}</div>
-              </div>
-
-              {/* Days - ALL shifts shown for ALL days */}
-              {weekDays.map((day) => {
-                const shiftAssignments = getAssignmentsForShiftAndDay(shift.id, day);
-                const cellId = `${shift.id}___${day}`;
-                
-                return (
-                  <div 
-                    key={cellId}
-                    onDragOver={(e) => handleDragOver(e, cellId)}
-                    onDragLeave={handleDragLeave}
-                    onDrop={(e) => handleDrop(e, cellId)}
-                    className={`schedule-cell border-r border-slate-200 last:border-r-0 relative ${dragOverCell === cellId ? 'bg-primary-100 ring-2 ring-primary-400 ring-inset' : ''}`}
-                  >
-                    {shiftAssignments.length > 0 ? (
-                      <>
-                        {/* Assigned employees */}
-                        <div className="space-y-1">
-                          {shiftAssignments.map(assignment => {
-                            const employee = getEmployeeById(assignment.employeeId);
-                            const duty = assignment.specialDuty ? getDutyById(assignment.specialDuty) : null;
-                            
-                            return (
-                              <div
-                                key={assignment.id}
-                                className={`group relative flex items-center gap-1 p-1 rounded ${getRoleColor(employee?.role || Role.SERVER)} hover:opacity-80 transition-opacity`}
-                              >
-                                <span className="text-xs font-medium truncate">
-                                  {employee?.name || '?'}
-                                </span>
-                                {duty && (
-                                  <span className="text-[10px] px-1 rounded bg-white/50">
-                                    {duty.label}
-                                  </span>
-                                )}
-                                <button
-                                  onClick={() => onRemoveAssignment(assignment.id)}
-                                  className="absolute -right-1 -top-1 p-0.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                                >
-                                  <X size={10} />
-                                </button>
-                              </div>
-                            );
-                          })}
-                        </div>
-                        {/* Add more button */}
-                        <button
-                          onClick={() => handleOpenAssignModal(shift.id, shift.label, day)}
-                          className="w-full mt-1 py-1 flex items-center justify-center text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded transition-colors text-xs"
-                          title="Dodaj još radnika"
-                        >
-                          <Plus size={14} className="mr-1" /> Dodaj
-                        </button>
-                      </>
-                    ) : (
-                      <button
-                        onClick={() => handleOpenAssignModal(shift.id, shift.label, day)}
-                        className="w-full h-full flex flex-col items-center justify-center text-slate-400 hover:text-primary-600 hover:bg-primary-50 transition-all group"
-                        title="Klikni za dodavanje radnika"
-                      >
-                        <div className="w-8 h-8 rounded-full bg-slate-100 group-hover:bg-primary-100 flex items-center justify-center transition-colors mb-1">
-                          <Plus size={18} className="group-hover:text-primary-600" />
-                        </div>
-                        <span className="text-[10px] group-hover:text-primary-600">Dodaj</span>
-                      </button>
-                    )}
-                    
-                    {/* Drag hint */}
-                    {shiftAssignments.length === 0 && (
-                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <div className="text-center text-slate-300 opacity-0 hover:opacity-100 transition-opacity">
-                          <Plus size={24} className="mx-auto mb-1" />
-                          <span className="text-xs">Prevuci radnika</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </React.Fragment>
-          ))}
-        </div>
-
-        {/* Legend */}
-        <div className="mt-4 flex flex-wrap gap-4 text-sm text-slate-600">
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-primary-100 border border-primary-200"></div>
-            <span>Angazovani radnici</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Users size={16} className="text-slate-300" />
-            <span>Klikni + za dodavanje</span>
-          </div>
-          <div className="flex items-center gap-2 hidden lg:flex">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-400">
-              <path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3"/>
-            </svg>
-            <span>Prevuci radnika (desktop)</span>
           </div>
         </div>
 
-        {/* Quick Stats */}
-        <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="card">
-            <p className="text-sm text-slate-500">Ukupno smjena</p>
-            <p className="text-2xl font-bold text-slate-800">{shifts.length}</p>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg text-sm font-medium">
+            <Wand2 size={16} />
+            <span>AI Asistent spreman</span>
           </div>
-          <div className="card">
-            <p className="text-sm text-slate-500">Ukupno radnika</p>
-            <p className="text-2xl font-bold text-slate-800">{employees.length}</p>
-          </div>
-          <div className="card">
-            <p className="text-sm text-slate-500">Dodjela ove sedmice</p>
-            <p className="text-2xl font-bold text-slate-800">{assignments.length}</p>
-          </div>
-          <div className="card">
-            <p className="text-sm text-slate-500">Pokrivenost</p>
-            <p className="text-2xl font-bold text-slate-800">
-              {shifts.length > 0 
-                ? Math.round((assignments.length / (shifts.length * weekDays.length)) * 100) 
-                : 0}%
-            </p>
-          </div>
-        </div>
-
-        {/* Footer Message */}
-        <div className="mt-8 pt-6 border-t border-slate-200 text-center">
-          <p className="text-sm text-slate-400">
-            Made with <span className="inline-block animate-pulse">❤️</span> for Aleksandar Conference & Spa, Žabljak, Montenegro 🇲🇪
-          </p>
+          <div className="h-6 w-px bg-gray-200 dark:bg-gray-700" />
+           <div className="text-sm text-gray-500">
+             {assignments.length} dodjela
+           </div>
         </div>
       </div>
 
-      {/* Manual Assignment Modal */}
-      {isAssignModalOpen && selectedShiftId && (
-        <div 
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-          onClick={handleCloseAssignModal}
-        >
-          <div 
-            className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[80vh] overflow-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-4 border-b border-slate-200">
-              <div>
-                <h2 className="text-lg font-bold text-slate-800">Dodaj radnika</h2>
-                <p className="text-sm text-slate-500">{selectedShiftLabel}</p>
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <div className="flex-1 overflow-auto">
+          <div className="min-w-[1200px]">
+             {/* Grid Header */}
+            <div className="grid grid-cols-[200px_repeat(7,1fr)] sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
+              <div className="p-4 font-medium text-gray-500 dark:text-gray-400 border-r border-gray-100 dark:border-gray-700">
+                Smjena / Zaposleni
               </div>
-              <button 
-                onClick={handleCloseAssignModal}
-                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-4 overflow-y-auto max-h-[60vh]">
-              {employees.length === 0 ? (
-                <p className="text-center text-slate-500 py-8">
-                  Nema registrovanih radnika
-                </p>
-              ) : (
-                <>
-                  {/* Multi-select header */}
-                  <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-200">
-                    <div>
-                      <p className="text-sm text-slate-600">Izaberi radnike:</p>
-                      <p className="text-xs text-slate-400">Označavanjem ćeš dodati više radnika odjednom</p>
-                    </div>
-                    <button
-                      onClick={handleSelectAllUnassigned}
-                      className="text-xs text-primary-600 hover:text-primary-700 font-medium"
-                    >
-                      Označi sve
-                    </button>
+              {weekDays.map(({ date, dayName, isToday }) => (
+                <div 
+                  key={dayName} 
+                  className={`p-3 text-center border-r border-gray-100 dark:border-gray-700 ${
+                    isToday ? 'bg-blue-50 dark:bg-blue-900/10' : ''
+                  }`}
+                >
+                  <div className={`font-medium ${isToday ? 'text-blue-600 dark:text-blue-400' : 'text-gray-900 dark:text-white'}`}>
+                    {dayName}
                   </div>
-
-                  {/* Employees list with checkboxes */}
-                  <div className="space-y-2">
-                    {employees.map(employee => {
-                      const assigned = getCurrentAssignedEmployees();
-                      const isAlreadyAssigned = assigned.includes(employee.id);
-                      const isSelected = selectedEmployeeIds.has(employee.id);
-                      
-                      return (
-                        <button
-                          key={employee.id}
-                          onClick={() => {
-                            if (!isAlreadyAssigned) {
-                              toggleEmployeeSelection(employee.id);
-                            }
-                          }}
-                          disabled={isAlreadyAssigned}
-                          className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-all text-left ${
-                            isAlreadyAssigned 
-                              ? 'bg-slate-100 border-slate-200 opacity-60 cursor-not-allowed'
-                              : isSelected
-                              ? 'bg-primary-50 border-primary-300'
-                              : 'bg-white border-slate-200 hover:bg-slate-50'
-                          }`}
-                        >
-                          <div className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${
-                            isAlreadyAssigned 
-                              ? 'border-slate-300 bg-slate-200' 
-                              : isSelected
-                              ? 'border-primary-500 bg-primary-500'
-                              : 'border-slate-300'
-                          }`}>
-                            {isSelected && <Check size={14} className="text-white" />}
-                          </div>
-                          
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${
-                            employee.role === Role.CHEF ? 'bg-orange-100 text-orange-700' :
-                            employee.role === Role.MANAGER ? 'bg-purple-100 text-purple-700' :
-                            employee.role === Role.BARTENDER ? 'bg-emerald-100 text-emerald-700' :
-                            employee.role === Role.SERVER ? 'bg-blue-100 text-blue-700' :
-                            'bg-slate-100 text-slate-700'
-                          }`}>
-                            {employee.name.charAt(0)}
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-medium text-slate-800">{employee.name}</p>
-                            <p className="text-xs text-slate-500">{employee.role}</p>
-                          </div>
-                          {isAlreadyAssigned ? (
-                            <span className="text-xs text-green-600 font-medium">Već dodan</span>
-                          ) : isSelected ? (
-                            <span className="text-xs text-primary-600 font-medium">Označen</span>
-                          ) : null}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Selected count and add button */}
-                  {selectedEmployeeIds.size > 0 && (
-                    <div className="mt-4 pt-4 border-t border-slate-200">
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="text-sm text-slate-600">
-                          Označeno: <strong>{selectedEmployeeIds.size}</strong> radnika
-                        </span>
-                        <button
-                          onClick={() => setSelectedEmployeeIds(new Set())}
-                          className="text-xs text-slate-400 hover:text-slate-600"
-                        >
-                          Poništi
-                        </button>
-                      </div>
-                      <button
-                        onClick={handleAddSelectedEmployees}
-                        className="w-full btn btn-primary flex items-center justify-center gap-2"
-                      >
-                        <Plus size={18} />
-                        Dodaj označene ({selectedEmployeeIds.size})
-                      </button>
-                    </div>
-                  )}
-                </>
-              )}
-
-              {/* Already assigned employees summary */}
-              {getCurrentAssignedEmployees().length > 0 && (
-                <div className="mt-6 pt-4 border-t border-slate-200">
-                  <p className="text-sm text-slate-600 mb-3">
-                    Već dodijeljeni ({getCurrentAssignedEmployees().length}):
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {getCurrentAssignedEmployees().map(empId => {
-                      const employee = employees.find(e => e.id === empId);
-                      if (!employee) return null;
-                      return (
-                        <div key={empId} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary-100 text-primary-700 text-sm">
-                          <span>{employee.name}</span>
-                        </div>
-                      );
-                    })}
+                  <div className={`text-sm ${isToday ? 'text-blue-500 dark:text-blue-300' : 'text-gray-500'}`}>
+                    {formatDate(date)}
                   </div>
                 </div>
-              )}
-
-              {/* Close button at bottom */}
-              <div className="mt-6 pt-4 border-t border-slate-200">
-                <button
-                  onClick={handleCloseAssignModal}
-                  className="w-full btn btn-secondary"
-                >
-                  Zatvori
-                </button>
-              </div>
+              ))}
             </div>
+
+            {/* Shifts Rows */}
+            {shifts.map(shift => (
+              <div key={shift.id} className="grid grid-cols-[200px_repeat(7,1fr)] border-b border-gray-100 dark:border-gray-700 min-h-[120px]">
+                {/* Shift Label Column */}
+                <div className="p-4 border-r border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
+                  <div className="font-medium text-gray-900 dark:text-white">{shift.label}</div>
+                  <div className="text-sm text-gray-500 flex items-center gap-1 mt-1">
+                    <Clock size={12} />
+                    {shift.startTime} - {shift.endTime}
+                  </div>
+                </div>
+
+                {/* Days Columns */}
+                {weekDays.map(({ dayName }) => (
+                  <Droppable key={`${shift.id}|${dayName}`} droppableId={`${shift.id}|${dayName}`}>
+                    {(provided, snapshot) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.droppableProps}
+                        className={`p-2 border-r border-gray-100 dark:border-gray-700 transition-colors relative ${
+                          snapshot.isDraggingOver ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+                        }`}
+                      >
+                        {assignments
+                          .filter(a => a.shiftId === shift.id && a.day === dayName)
+                          .map((assignment, index) => {
+                             const employee = employees.find(e => e.id === assignment.employeeId);
+                             if (!employee) return null;
+
+                             return (
+                               <div
+                                  key={assignment.id}
+                                  className="mb-2 p-2 bg-white dark:bg-gray-700 rounded-lg shadow-sm border border-gray-200 dark:border-gray-600 group relative hover:border-blue-400 dark:hover:border-blue-500 transition-colors cursor-pointer"
+                                  onDoubleClick={() => handleOpenDutyModal(
+                                    shift.id, 
+                                    employee.id, 
+                                    dayName as DayOfWeek, 
+                                    assignment.dutyIds,
+                                    assignment.zoneIds,
+                                    assignment.specialDutyIds
+                                  )}
+                               >
+                                  <div className="flex justify-between items-start mb-1">
+                                    <span className="font-medium text-sm text-gray-900 dark:text-white truncate">
+                                      {employee.name}
+                                    </span>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        onRemoveAssignment(assignment.id);
+                                      }}
+                                      className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                      &times;
+                                    </button>
+                                  </div>
+
+                                  {/* Duty Tags */}
+                                  <div className="flex flex-wrap gap-1">
+                                    {assignment.dutyIds?.map(dutyId => (
+                                      <div 
+                                        key={dutyId}
+                                        className="text-[10px] px-1.5 py-0.5 rounded-full text-white truncate max-w-full"
+                                        style={{ backgroundColor: getItemColor(dutyId, 'duty') }}
+                                      >
+                                        {getItemLabel(dutyId, 'duty')}
+                                      </div>
+                                    ))}
+                                  </div>
+                                  
+                                  {/* Zone Tags */}
+                                  {assignment.zoneIds && assignment.zoneIds.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                       {assignment.zoneIds.map(zoneId => (
+                                          <div
+                                            key={zoneId}
+                                            className="text-[10px] px-1.5 py-0.5 rounded-full text-white truncate max-w-full flex items-center gap-0.5"
+                                            style={{ backgroundColor: getItemColor(zoneId, 'zone') }}
+                                          >
+                                            <span className='w-1 h-1 bg-white rounded-full opacity-50'/>
+                                            {getItemLabel(zoneId, 'zone')}
+                                          </div>
+                                       ))}
+                                    </div>
+                                  )}
+
+                                  {/* Special Duty Tags */}
+                                  {assignment.specialDutyIds && assignment.specialDutyIds.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                        {assignment.specialDutyIds.map(sdId => (
+                                          <div
+                                             key={sdId}
+                                             className="text-[10px] px-1 rounded-sm text-white truncate max-w-full flex items-center justify-center"
+                                             style={{ backgroundColor: getItemColor(sdId, 'specialDuty') }}
+                                             title={getItemLabel(sdId, 'specialDuty')}
+                                          >
+                                            <Star size={8} fill="currentColor" className="opacity-80"/>
+                                          </div>
+                                        ))}
+                                    </div>
+                                  )}
+
+                               </div>
+                             );
+                          })}
+                        {provided.placeholder}
+                      </div>
+                    )}
+                  </Droppable>
+                ))}
+              </div>
+            ))}
           </div>
         </div>
-      )}
+      </DragDropContext>
+      
+      {/* Draggable Employee List (Footer) - Optional, simplified for now */}
+       <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+          <p className="text-xs text-gray-400 mb-2 font-medium uppercase tracking-wider">Dostupni radnici (prevuci na raspored)</p>
+          <Droppable droppableId="employee-pool" isDropDisabled={true} direction="horizontal">
+            {(provided) => (
+              <div 
+                ref={provided.innerRef}
+                {...provided.droppableProps}
+                className="flex gap-2 overflow-x-auto pb-2"
+              >
+                {employees.map((employee, index) => (
+                  <Draggable key={employee.id} draggableId={employee.id} index={index}>
+                    {(provided, snapshot) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.draggableProps}
+                        {...provided.dragHandleProps}
+                        className={`
+                          px-3 py-1.5 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 
+                          text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap
+                          hover:border-blue-400 hover:shadow-sm transition-all cursor-move
+                          ${snapshot.isDragging ? 'ring-2 ring-blue-500 shadow-lg z-50' : ''}
+                        `}
+                      >
+                        {employee.name}
+                      </div>
+                    )}
+                  </Draggable>
+                ))}
+                {provided.placeholder}
+              </div>
+            )}
+          </Droppable>
+       </div>
+
+      <DutyAssignmentModal
+        isOpen={!!pendingAssignment}
+        onClose={() => setPendingAssignment(null)}
+        onConfirm={handleConfirmAssignment}
+        duties={duties}
+        zones={zones}
+        specialDuties={specialDuties}
+        employeeName={pendingAssignment?.employeeName || ''}
+        shiftLabel={pendingAssignment?.shiftLabel || ''}
+        initialDutyIds={pendingAssignment?.initialDutyIds}
+        initialZoneIds={pendingAssignment?.initialZoneIds}
+        initialSpecialDutyIds={pendingAssignment?.initialSpecialDutyIds}
+      />
     </div>
   );
 }
