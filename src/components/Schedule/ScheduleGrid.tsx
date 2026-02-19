@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Wand2, Calculator, MoreHorizontal } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Wand2, Calculator, MoreHorizontal, Clock, Star } from 'lucide-react';
 import { Employee, Shift, Assignment, Duty, DayOfWeek, ALL_DAYS, Zone, SpecialDuty } from '../../types';
 import { formatDate, getDayName } from '../../utils/date';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
