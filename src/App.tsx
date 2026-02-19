@@ -13,7 +13,7 @@ import {
   Star
 } from 'lucide-react';
 import { EmployeesPage } from './components/Employees/EmployeesPage';
-import { ScheduleGrid } from './components/Schedule/ScheduleGrid';
+import { SimpleSchedule } from './components/Schedule/SimpleSchedule';
 import { ShiftsPage } from './components/Shifts/ShiftsPage';
 import { DutiesPage } from './components/Duties/DutiesPage';
 import { ZonesPage } from './components/Zones/ZonesPage';
@@ -203,17 +203,11 @@ function App() {
       case 'schedule':
       default:
         return (
-          <ScheduleGrid
+          <SimpleSchedule
             currentWeekStart={currentWeekStart}
             employees={employees}
             shifts={shifts}
             assignments={weekAssignments}
-            duties={duties}
-            zones={zones} // New
-            specialDuties={specialDuties} // New
-            onNavigateWeek={navigateWeek}
-            onAssign={manualAssign}
-            onRemoveAssignment={removeAssignment}
           />
         );
     }
