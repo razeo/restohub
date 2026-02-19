@@ -87,10 +87,24 @@ export function ShiftsPage({ shifts, onAddShift, onAddShifts, onRemoveShift, onU
     if (!formData.label.trim() || !formData.startTime || !formData.endTime) return;
 
     if (editingShift) {
-      onUpdateShift({
-        ...editingShift,
-        ...formData,
-      });
+      if (formData.replicateToAllDays) {
+        // Update all shifts with same label
+        const shiftsToUpdate = shifts.filter(s => s.label === editingShift.label);
+        shiftsToUpdate.forEach(s => {
+          onUpdateShift({
+            ...s,
+            label: formData.label,
+            startTime: formData.startTime,
+            endTime: formData.endTime,
+            color: formData.color,
+          });
+        });
+      } else {
+        onUpdateShift({
+          ...editingShift,
+          ...formData,
+        });
+      }
     } else if (formData.replicateToAllDays) {
       // Add shift to all days using the new batch function
       const batchShifts = DAYS.map(dayConfig => ({
@@ -291,7 +305,7 @@ export function ShiftsPage({ shifts, onAddShift, onAddShifts, onRemoveShift, onU
               </div>
 
               {/* Replicate to all days */}
-              {!editingShift && (
+              {(
                 <div className="flex items-center gap-4 p-4 bg-primary-50/50 rounded-2xl border border-primary-100 group cursor-pointer" onClick={() => setFormData(prev => ({ ...prev, replicateToAllDays: !prev.replicateToAllDays }))}>
                   <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${formData.replicateToAllDays ? 'bg-primary-900 text-white' : 'bg-white border border-slate-200 text-transparent'}`}>
                     <X size={14} className={formData.replicateToAllDays ? '' : 'hidden'} />
