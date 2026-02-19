@@ -77,6 +77,17 @@ export function getDayName(date: Date): string {
 }
 
 /**
+ * Format date for display
+ */
+export function formatDate(date: Date): string {
+  return date.toLocaleDateString('sr-RS', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+}
+
+/**
  * Get short day name (2-3 chars)
  */
 export function getShortDayName(date: Date): string {

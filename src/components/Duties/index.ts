@@ -1,0 +1,1 @@
+export { DutiesPage } from './DutiesPage';

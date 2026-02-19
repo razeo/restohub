@@ -5,6 +5,17 @@
 
 import { Employee, Duty, Shift, Role, DayOfWeek, ShiftTemplate } from '../types';
 
+export const STORAGE_KEYS = {
+  EMPLOYEES: 'restohub_employees',
+  SHIFTS: 'restohub_shifts',
+  DUTIES: 'restohub_duties',
+  SCHEDULE: 'restohub_schedule',
+  ZONES: 'restohub_zones',
+  SPECIAL_DUTIES: 'restohub_special_duties',
+  CHAT: 'restohub_chat',
+  AI_RULES: 'restohub_ai_rules',
+};
+
 export const INITIAL_EMPLOYEES: Employee[] = [
   { id: 'emp-1', name: 'Marko Marković', role: Role.SERVER },
   { id: 'emp-2', name: 'Jovan Jovanović', role: Role.CHEF },
@@ -12,9 +23,9 @@ export const INITIAL_EMPLOYEES: Employee[] = [
 ];
 
 export const INITIAL_DUTIES: Duty[] = [
-  { id: 'dt-1', label: 'Glavna smjena' },
-  { id: 'dt-2', label: 'Pomoćna smjena' },
-  { id: 'dt-3', label: 'Vikend' },
+  { id: 'dt-1', label: 'Glavna smjena', color: '#3b82f6' },
+  { id: 'dt-2', label: 'Pomoćna smjena', color: '#10b981' },
+  { id: 'dt-3', label: 'Vikend', color: '#f59e0b' },
 ];
 
 export const INITIAL_SHIFTS: Shift[] = [
@@ -38,6 +49,18 @@ export const DEFAULT_AI_RULES = `• Svaki radnik ima max 5 smjena sedmično
 • Poštuj dostupnost radnika
 • Barbier i Host ne mogu raditi noćne smjene
 • Vikendi su za iskusne radnike`;
+
+export const INITIAL_ZONES = [
+  { id: 'z-1', label: 'Sala A', color: '#3b82f6', description: 'Glavna sala' },
+  { id: 'z-2', label: 'Sala B', color: '#10b981', description: 'Manja sala' },
+  { id: 'z-3', label: 'Terasa', color: '#f59e0b', description: 'Vanjska terasa' },
+  { id: 'z-4', label: 'Bar', color: '#8b5cf6', description: 'Bar prostor' },
+];
+
+export const INITIAL_SPECIAL_DUTIES = [
+  { id: 'sd-1', label: 'Dekoracija', description: 'Ukrasiti stolove' },
+  { id: 'sd-2', label: 'Inventar', description: 'Prebrojati čaše' },
+];
 
 // Default shift templates
 export const DEFAULT_TEMPLATES: ShiftTemplate[] = [

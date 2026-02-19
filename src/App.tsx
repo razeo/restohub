@@ -9,21 +9,19 @@ import {
   Clock, 
   FileText,
   LogOut,
-  MapPin, // Icon for Zones
-  Star    // Icon for Special Duties
+  MapPin,
+  Star
 } from 'lucide-react';
-import { EmployeeList } from './components/EmployeeList';
+import { EmployeesPage } from './components/Employees/EmployeesPage';
 import { ScheduleGrid } from './components/Schedule/ScheduleGrid';
-import { ShiftManager } from './components/ShiftManager';
-import { DutyManager } from './components/DutyManager';
-import { ZonesPage } from './components/Zones'; // Updated import
-import { SpecialDutiesPage } from './components/SpecialDuties'; // Updated import
-import { ChatPanel } from './components/Chat/ChatPanel';
+import { ShiftsPage } from './components/Shifts/ShiftsPage';
+import { DutiesPage } from './components/Duties/DutiesPage';
+import { ZonesPage } from './components/Zones/ZonesPage';
+import { SpecialDutiesPage } from './components/SpecialDuties/SpecialDutiesPage';
+import { ChatInterface } from './components/Chat/ChatInterface';
 import { Sidebar } from './components/Sidebar/Sidebar';
 import { useScheduleState } from './hooks/useScheduleState';
 import { Toaster } from 'react-hot-toast';
-import { processScheduleRequest } from './services/gemini';
-import { AIResponse, Zone, SpecialDuty } from './types'; // Updated import
 
 function App() {
   const {
@@ -158,7 +156,7 @@ function App() {
     switch (currentPage) {
       case 'employees':
         return (
-          <EmployeeList
+          <EmployeesPage
             employees={employees}
             onAdd={addEmployee}
             onRemove={removeEmployee}
@@ -167,7 +165,7 @@ function App() {
         );
       case 'shifts':
         return (
-          <ShiftManager
+          <ShiftsPage
             shifts={shifts}
             onAdd={addShift}
             onAddBulk={addShifts}
@@ -177,7 +175,7 @@ function App() {
         );
       case 'duties':
         return (
-          <DutyManager
+          <DutiesPage
             duties={duties}
             onAdd={addDuty}
             onRemove={removeDuty}
@@ -292,7 +290,7 @@ function App() {
         {/* Chat Panel - Floating Overlay */}
         {isChatOpen && (
           <div className="absolute top-0 right-0 h-full w-full md:w-[400px] bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 shadow-2xl z-40 transform transition-transform duration-300 ease-in-out translate-x-0">
-             <ChatPanel
+             <ChatInterface
                 isOpen={isChatOpen}
                 onClose={() => setIsChatOpen(false)}
                 messages={chatMessages}
