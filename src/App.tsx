@@ -158,19 +158,19 @@ function App() {
         return (
           <EmployeesPage
             employees={employees}
-            onAdd={addEmployee}
-            onRemove={removeEmployee}
-            onUpdate={updateEmployee}
+            onAddEmployee={addEmployee}
+            onRemoveEmployee={removeEmployee}
+            onUpdateEmployee={updateEmployee}
           />
         );
       case 'shifts':
         return (
           <ShiftsPage
             shifts={shifts}
-            onAdd={addShift}
-            onAddBulk={addShifts}
-            onRemove={removeShift}
-            onUpdate={updateShift}
+            onAddShift={addShift}
+            onAddShifts={addShifts}
+            onRemoveShift={removeShift}
+            onUpdateShift={updateShift}
           />
         );
       case 'duties':
